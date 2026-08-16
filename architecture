@@ -1,0 +1,19 @@
+4 layer Architecture
+
+UI Layer  // what a user will see on screen and how to navigate 
+=> component
+=> pages 
+
+Hook // manage the state layer and api layer
+=> hooks
+
+
+State // user data we show on screen where to store
+ => auth.context.jsx
+ => ai.context.jsx
+
+
+
+API // how frontend communicate with backend 
+=> Services 
+   => auth.api.js

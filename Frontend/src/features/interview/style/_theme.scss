@@ -1,0 +1,17 @@
+/* Shared theme tokens for the interview feature.
+   Included by home.scss and interview.scss so both pages stay in sync. */
+
+@mixin app-theme {
+    --surface-page: #08090d;
+    --surface-card: #10131a;
+    --surface-field: #171b24;
+    --surface-raised: #1c2130;
+    --border-soft: #232838;
+    --accent: #ff0f62;
+    --accent-soft: rgba(255, 15, 98, 0.12);
+    --text-strong: #f4f5f7;
+    --text-muted: #9aa2b1;
+    --text-faint: #6b7383;
+    --radius-card: 1rem;
+    --radius-field: 0.75rem;
+}
