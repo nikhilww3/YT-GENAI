@@ -9,7 +9,9 @@ function App() {
   return (
     /* we have wrap whole application in AuthProvider */
     <AuthProvider>
-      < RouterProvider router={router} />
+      <InterviewProvider>
+        <RouterProvider router={router} />
+      </InterviewProvider>
     </AuthProvider>
   )
 }

@@ -1,20 +1,22 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import "../style/interview.scss"
 import { useInterview } from "../hooks/useInterview"
-import { useParams, useNavigate } from "react-router"
+import { DownloadIcon } from "../components/icons.jsx"
 
 /**
- * UI layer only — pure presentational.
+ * Report detail page, rendered at /interview/:interviewId.
  *
  * `report` is one interview-report document (matchScore, technicalQuestion[],
- * behavioralQuestion[], skillGap[], preparationPlan[]). The hook/state/api
- * layers fetch it by :interviewId and pass it in; this file only renders.
+ * behavioralQuestion[], skillGap[], preparationPlan[]). useInterview() reads
+ * :interviewId itself (via useParams internally) and fetches the matching
+ * report on mount — this component only renders whatever it returns.
  *
- * activeSection is view state (which tab is open), not application state.
+ * activeSection is local view state (which of the three tabs is open), not
+ * data that needs to survive a refetch or be shared elsewhere.
  */
 
-
-
+// Renders one tab's list of Q&A cards. Shared by both the technical and
+// behavioral sections since they're the same shape.
 const QuestionList = ({ questions }) => {
     if (!questions.length) {
         return <p className='empty-note'>No questions in this section yet.</p>
@@ -42,6 +44,7 @@ const QuestionList = ({ questions }) => {
     )
 }
 
+// Renders the day-by-day preparation plan as a numbered list of task cards.
 const Roadmap = ({ plan }) => {
     if (!plan.length) {
         return <p className='empty-note'>No preparation plan yet.</p>
@@ -70,17 +73,30 @@ const Roadmap = ({ plan }) => {
     )
 }
 
-const Interview = ({ report = null }) => {
+// Left-rail tab definitions — id matches activeSection, label is the
+// heading shown above the content once that tab is selected.
+const SECTIONS = [
+    { id: "technical", label: "Technical Questions" },
+    { id: "behavioral", label: "Behavioral Questions" },
+    { id: "roadmap", label: "Preparation Roadmap" },
+]
+
+const Interview = () => {
 
     const [activeSection, setActiveSection] = useState("technical")
-    const { report, getReportById, loading } = useInterview()
-    const { interviewId } = useParams()
+    const [resumeError, setResumeError] = useState(null)
+    // report starts out null until useInterview's effect resolves the fetch,
+    // so every read below falls back to an empty value via `?.` / `??`.
+    const { report, loading, downloadResume, downloadingResume } = useInterview()
 
-    useEffect(() => {
-        if (interviewId) {
-            getReportById(interviewId)
+    const handleDownloadResume = async () => {
+        setResumeError(null)
+        try {
+            await downloadResume(report._id)
+        } catch (error) {
+            setResumeError(error.message || "Failed to generate the tailored resume. Please try again.")
         }
-    }, [interviewId, getReportById])
+    }
 
     const technicalQuestion = report?.technicalQuestion ?? []
     const behavioralQuestion = report?.behavioralQuestion ?? []
@@ -89,8 +105,17 @@ const Interview = ({ report = null }) => {
     const matchScore = report?.matchScore
 
     const activeLabel =
-        report.find((section) => section.id === activeSection)?.label ?? ""
+        SECTIONS.find((section) => section.id === activeSection)?.label ?? ""
 
+    if (loading) {
+        return (
+            <main className='loading-screen'>
+                <h1>Loading your interview report...</h1>
+            </main>
+        )
+    }
+
+    // Picks which panel to show in the main column for the active tab.
     const renderSection = () => {
         if (activeSection === "technical") {
             return <QuestionList questions={technicalQuestion} />
@@ -111,6 +136,7 @@ const Interview = ({ report = null }) => {
 
     return (
         <main className='interview'>
+            {/* Left rail: tab switcher between the three report sections. */}
             <nav className='interview__rail interview__rail--left' aria-label='Report sections'>
                 <ul className='section-nav'>
                     {SECTIONS.map((section) => {
@@ -133,22 +159,42 @@ const Interview = ({ report = null }) => {
                 </ul>
             </nav>
 
+            {/* Main column: header with match score, then the active tab's content. */}
             <section className='interview__main' aria-live='polite'>
                 <header className='interview__main-header'>
                     <h1 className='interview__title'>{activeLabel}</h1>
-                    {typeof matchScore === "number" && (
-                        <p className='match-score'>
-                            <span className='match-score__label'>Match</span>
-                            <span className='match-score__value'>{matchScore}%</span>
-                        </p>
-                    )}
+                    <div className='interview__header-actions'>
+                        {typeof matchScore === "number" && (
+                            <p className='match-score'>
+                                <span className='match-score__label'>Match</span>
+                                <span className='match-score__value'>{matchScore}%</span>
+                            </p>
+                        )}
+                        {report && (
+                            <button
+                                type='button'
+                                className='button resume-download-button'
+                                onClick={handleDownloadResume}
+                                disabled={downloadingResume}
+                                aria-describedby={resumeError ? 'resume-download-error' : undefined}
+                            >
+                                <DownloadIcon />
+                                {downloadingResume ? "Generating..." : "Download Tailored Resume"}
+                            </button>
+                        )}
+                    </div>
                 </header>
+
+                {resumeError && (
+                    <p id='resume-download-error' className='resume-download-error' role='alert'>{resumeError}</p>
+                )}
 
                 <div className='interview__content'>
                     {report ? renderSection() : <p className='empty-note'>No report loaded.</p>}
                 </div>
             </section>
 
+            {/* Right rail: always-visible skill gaps, independent of the active tab. */}
             <aside className='interview__rail interview__rail--right' aria-labelledby='skillGapHeading'>
                 <h2 id='skillGapHeading' className='rail-heading'>Skill Gaps</h2>
 

@@ -48,3 +48,17 @@ export const SparkIcon = ({ className }) => (
         <path d="m12 3 2.2 5.6L20 10.8l-5.8 2.2L12 19l-2.2-6L4 10.8l5.8-2.2L12 3Z" />
     </svg>
 )
+
+export const ChevronRightIcon = ({ className }) => (
+    <svg {...baseProps} className={className} width="18" height="18">
+        <path d="m9 6 6 6-6 6" />
+    </svg>
+)
+
+export const DownloadIcon = ({ className }) => (
+    <svg {...baseProps} className={className} width="18" height="18">
+        <path d="M12 3v12" />
+        <path d="m7 10 5 5 5-5" />
+        <path d="M5 21h14" />
+    </svg>
+)

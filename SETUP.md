@@ -66,7 +66,18 @@ npm install
 
 `node_modules/` is not committed. Always run `npm install` after cloning or if packages look missing.
 
-### 3. Start MongoDB (if using local DB)
+### 3. Install the Tectonic LaTeX engine (for the tailored-resume feature)
+
+```bash
+cd Backend
+npm run setup:tectonic
+```
+
+Downloads a single static `tectonic` binary into `Backend/bin/tectonic` (not committed — same reasoning as `node_modules/`). No Homebrew, no system-wide TeX install, no Docker. Only needed for the "Download Tailored Resume" feature on the interview report page; the rest of the app works without it.
+
+The very first PDF compile after this will be a bit slower than usual (Tectonic fetches the LaTeX packages it needs from the network once); every compile after that is fast and fully offline.
+
+### 4. Start MongoDB (if using local DB)
 
 **macOS (Homebrew):**
 
@@ -199,6 +210,7 @@ cd Frontend && npm run build
 - [ ] `node -v` works
 - [ ] `Backend/.env` exists with `MONGO_URL` and `JWT_SECRET`
 - [ ] `npm install` in `Backend/` and `Frontend/`
+- [ ] `npm run setup:tectonic` in `Backend/` (only needed for tailored-resume downloads)
 - [ ] MongoDB running (local or Atlas)
 - [ ] Backend on port 3000
 - [ ] Frontend on port 5173

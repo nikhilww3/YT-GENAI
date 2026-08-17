@@ -1,7 +1,8 @@
-import {getAllInterviewReports, generateInterviewReport, getInterviewReportById} from "../services/interview.api"
-import {useContext, useEffect } from "react"
+import {getAllInterviewReports, generateInterviewReport, getInterviewReportById, fetchTailoredResume} from "../services/interview.api"
+import {useCallback, useContext, useEffect, useState } from "react"
 import { InterviewContext } from "../interview.context"
 import { useParams } from "react-router"
+import { downloadBlob } from "../../../lib/downloadBlob"
 
 /**
  * @description Custom hook to manage interview-related state and actions. It provides functions to generate an interview report, retrieve a specific report by ID, and fetch all reports for the user. It also manages loading and error states.
@@ -16,8 +17,13 @@ export const useInterview = () => {
     }
 
     const {loading, setLoading, report, setReport, reports, setReports} = context
+    const { interviewId } = useParams()
+    // Separate from `loading` on purpose — that one drives a full-page
+    // takeover, but a resume download is a single button's own spinner and
+    // shouldn't block the rest of the report from being visible/usable.
+    const [downloadingResume, setDownloadingResume] = useState(false)
 
-    const generateReport = async ({jobDescription, selfDescription, resumeFile}) => {
+    const generateReport = useCallback(async ({jobDescription, selfDescription, resumeFile}) => {
         setLoading(true)
         try {
             const response = await generateInterviewReport({jobDescription, selfDescription, resumeFile})
@@ -29,13 +35,13 @@ export const useInterview = () => {
         } finally {
             setLoading(false)
         }
-    }
+    }, [setLoading, setReport])
 
 
-    const getReportById = async (interviewId) => {
+    const getReportById = useCallback(async (id) => {
         setLoading(true)
         try {
-            const response = await getInterviewReportById(interviewId)
+            const response = await getInterviewReportById(id)
             setReport(response.interviewReport)
             return response.interviewReport
         } catch (error) {
@@ -44,9 +50,9 @@ export const useInterview = () => {
         } finally {
             setLoading(false)
         }
-    }
+    }, [setLoading, setReport])
 
-    const getReports = async () => {
+    const getReports = useCallback(async () => {
         setLoading(true)
         try {
             const response = await getAllInterviewReports()
@@ -58,7 +64,24 @@ export const useInterview = () => {
         } finally {
             setLoading(false)
         }
-    }
+    }, [setLoading, setReports])
+
+    // Takes interviewId explicitly (like getReportById) rather than closing
+    // over the route param — useInterview() is also called from Home.jsx,
+    // which has no :interviewId, so an implicit version would silently break
+    // if a download action were ever added there.
+    const downloadResume = useCallback(async (id) => {
+        setDownloadingResume(true)
+        try {
+            const { blob, filename } = await fetchTailoredResume(id)
+            downloadBlob(blob, filename)
+        } catch (error) {
+            console.error("Error downloading tailored resume:", error)
+            throw error
+        } finally {
+            setDownloadingResume(false)
+        }
+    }, [])
 
     useEffect(() => {
         if (interviewId) {
@@ -66,7 +89,7 @@ export const useInterview = () => {
         } else {
             getReports()
         }
-    }, [interviewId])
+    }, [interviewId, getReportById, getReports])
 
 
     return {
@@ -75,7 +98,9 @@ export const useInterview = () => {
         reports,
         generateReport,
         getReportById,
-        getReports
+        getReports,
+        downloadResume,
+        downloadingResume
     }
 
 }

@@ -105,6 +105,52 @@ const preparationPlanSchema = new mongoose.Schema({
     }]
 })
 
+// tailored resume content — the AI's structured output only, never LaTeX.
+// resume.service.js escapes + templates this at render time, on every
+// download, rather than storing an already-escaped or compiled copy.
+const tailoredResumeSchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    location: { type: String, required: true },
+    phone: { type: String, required: true },
+    emailDisplay: { type: String, required: true },
+    emailUrl: { type: String, required: true },
+    linkedinDisplay: { type: String, required: true },
+    linkedinUrl: { type: String, required: true },
+    githubDisplay: { type: String, required: true },
+    githubUrl: { type: String, required: true },
+    summary: { type: String, required: true },
+    education: [{
+        institution: { type: String, required: true },
+        location: { type: String, required: true },
+        degree: { type: String, required: true },
+        dates: { type: String, required: true },
+        _id: false
+    }],
+    experience: [{
+        title: { type: String, required: true },
+        company: { type: String, required: true },
+        location: { type: String, required: true },
+        dates: { type: String, required: true },
+        bullets: [{ type: String }],
+        _id: false
+    }],
+    projects: [{
+        name: { type: String, required: true },
+        tech: { type: String, required: true },
+        dates: { type: String, required: true },
+        linkUrl: { type: String },
+        bullets: [{ type: String }],
+        _id: false
+    }],
+    skills: [{
+        category: { type: String, required: true },
+        items: [{ type: String }],
+        _id: false
+    }]
+},{
+    _id: false
+})
+
 const interviewReportSchema = new mongoose.Schema({
     jobDescription: {
         type: String,
@@ -125,6 +171,7 @@ const interviewReportSchema = new mongoose.Schema({
     behavioralQuestion: [behavioralQuestionSchema],
     skillGap: [skillGapSchema],
     preparationPlan: [preparationPlanSchema],
+    tailoredResume: tailoredResumeSchema,
     user:{
         type:mongoose.Schema.Types.ObjectId,
         ref:"users"

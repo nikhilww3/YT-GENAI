@@ -1,5 +1,4 @@
-import {createcontext } from "react"
-import { useState } from "react"
+import { createContext, useState } from "react"
 
 export const InterviewContext = createContext()
 
