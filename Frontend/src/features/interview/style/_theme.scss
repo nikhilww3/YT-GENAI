@@ -1,17 +1,102 @@
-/* Shared theme tokens for the interview feature.
-   Included by home.scss and interview.scss so both pages stay in sync. */
+/* Depot Destination Blind — shared world tokens.
+   Included by home.scss and interview.scss so both surfaces stay in sync.
+
+   Three dyes only, per the world's grammar: bottle-green duck cloth is the
+   ground and drenches the field, chrome-yellow carries every legend, bleached
+   calico carries all prose. Rank is inversion — the lead panel alone prints
+   dark on pale cloth. Nothing glides here: motion snaps one course,
+   overshoots, and settles. */
 
 @mixin app-theme {
-    --surface-page: #08090d;
-    --surface-card: #10131a;
-    --surface-field: #171b24;
-    --surface-raised: #1c2130;
-    --border-soft: #232838;
-    --accent: #ff0f62;
-    --accent-soft: rgba(255, 15, 98, 0.12);
-    --text-strong: #f4f5f7;
-    --text-muted: #9aa2b1;
-    --text-faint: #6b7383;
-    --radius-card: 1rem;
-    --radius-field: 0.75rem;
+    /* Cloth — the drenched ground */
+    --cloth: #0F3D2E;
+    --cloth-deep: #0A2C21;
+    --cloth-lit: #16543F;
+    --cloth-seam: #215140;
+
+    /* Chrome-yellow — every legend */
+    --legend: #F5C518;
+    --legend-dim: #B99512;
+
+    /* Bleached calico — all prose */
+    --calico: #EDE8DC;
+    --calico-shade: #DCD6C6;
+
+    /* Ink for inverted panels */
+    --ink: #12140F;
+    --ink-soft: #3D4038;
+
+    /* Severity, dyed into the cloth rather than added as new hues */
+    --sev-high: #E0521F;
+    --sev-med: #F5C518;
+    --sev-low: #7FA98F;
+
+    /* One hard unit governs everything (eBoy donation) */
+    --u: 0.5rem;
+
+    /* Structural voids, not hairline rules (Cloud Quarry donation) */
+    --void: calc(var(--u) * 6);
+    --void-lg: calc(var(--u) * 12);
+
+    /* Cloth has no rounded corners; it is cut and stitched */
+    --radius: 2px;
+
+    --stitch: 1px dashed rgba(237, 232, 220, 0.28);
+    --seam: 1px solid rgba(237, 232, 220, 0.16);
+
+    /* Motion: CSS carries only the settle. The world's snap-and-overshoot is
+       authored in GSAP (back.out) where the whole choreography lives, so there
+       is no second, drifting copy of the easing here. */
+    --settle: 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+
+    --face-legend: "Barlow Condensed", sans-serif;
+    --face-prose: "Barlow", system-ui, sans-serif;
+}
+
+/* Legend type: one condensed grotesque, caps, tracked out like painted cloth. */
+@mixin legend($size: 1rem, $weight: 700) {
+    font-family: var(--face-legend);
+    font-size: $size;
+    font-weight: $weight;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    line-height: 1.05;
+}
+
+/* Woven fibre. A 1px pinstripe reads as a CSS crosshatch, not cloth, so the
+   nap is built from fractal turbulence — irregular fibre noise with a slight
+   warp/weft bias — over the dyed ground. This is the honest ceiling without
+   image generation: a photographed duck-cloth tile is still the right answer
+   and is listed as outstanding. */
+@mixin weave {
+    background-image:
+        url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'>\
+<filter id='f'><feTurbulence type='fractalNoise' baseFrequency='0.9 0.5' numOctaves='3' stitchTiles='stitch'/>\
+<feColorMatrix type='saturate' values='0'/></filter>\
+<rect width='140' height='140' filter='url(%23f)' opacity='0.5'/></svg>"),
+        repeating-linear-gradient(94deg, rgba(0, 0, 0, 0.10) 0 1px, transparent 1px 4px);
+    background-blend-mode: overlay, normal;
+}
+
+/* Calico carries every prose surface; it is woven too, just bleached. */
+@mixin calico-weave {
+    background-color: var(--calico);
+    background-image:
+        url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'>\
+<filter id='c'><feTurbulence type='fractalNoise' baseFrequency='1.1 0.7' numOctaves='2' stitchTiles='stitch'/>\
+<feColorMatrix type='saturate' values='0'/></filter>\
+<rect width='120' height='120' filter='url(%23c)' opacity='0.22'/></svg>");
+    background-blend-mode: multiply;
+}
+
+/* Panels are cut on a bias and stacked with real cast shadow, not floated flat. */
+@mixin bias($deg: 1.2deg) {
+    transform: skewY(-#{$deg});
+    > * { transform: skewY(#{$deg}); }
+}
+
+@mixin lifted {
+    box-shadow: 0 10px 24px rgba(6, 20, 15, 0.42);
 }

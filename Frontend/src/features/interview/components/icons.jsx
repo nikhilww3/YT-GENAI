@@ -55,6 +55,18 @@ export const ChevronRightIcon = ({ className }) => (
     </svg>
 )
 
+export const ChevronDownIcon = ({ className }) => (
+    <svg {...baseProps} className={className} width="16" height="16">
+        <path d="m6 9 6 6 6-6" />
+    </svg>
+)
+
+export const CheckIcon = ({ className }) => (
+    <svg {...baseProps} className={className} width="16" height="16">
+        <path d="m5 12 5 5 9-9" />
+    </svg>
+)
+
 export const DownloadIcon = ({ className }) => (
     <svg {...baseProps} className={className} width="18" height="18">
         <path d="M12 3v12" />

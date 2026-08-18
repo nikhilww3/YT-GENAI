@@ -1,26 +1,43 @@
 import axios from "axios";
 
+// Without a timeout a stalled request leaves the UI spinning forever with no
+// error. Set above the backend's own worst case (3 retries x 60s + backoff
+// ~= 3 min) so a real backend error message wins the race and reaches the
+// user, and this only fires when the backend itself has gone unresponsive.
 const api = axios.create({
     baseURL: "http://localhost:3000",
     withCredentials: true,
+    timeout: 210_000,
 })
 
 
 /**
- * @description Function to generate an interview report based on the user's self-description, resume PDF, and job description. It sends a POST request to the backend API with the necessary data and returns the generated report.
+ * @description Generates one interview report per requested provider ("gemini" | "nvidia" |
+ * "huggingface"), from the same resume PDF/self-description/job description. Returns
+ * { message, results: [{ provider, providerLabel, status, interviewReport? , message? }] } —
+ * each provider succeeds or fails independently, so a partial result set is normal, not an error.
  */
-
-export const generateInterviewReport = async ({jobDescription, selfDescription, resumeFile}) => {
+export const generateInterviewReport = async ({jobDescription, selfDescription, resumeFile, providers}) => {
 
     const formData = new FormData()
     formData.append("jobDescription", jobDescription)
     formData.append("selfDescription", selfDescription)
     formData.append("resume", resumeFile)
+    formData.append("providers", JSON.stringify(providers))
 
-    // let axios/the browser set Content-Type so the multipart boundary is included
-    const response = await api.post("/api/interview", formData)
-
-    return response.data
+    try {
+        // let axios/the browser set Content-Type so the multipart boundary is included
+        const response = await api.post("/api/interview", formData)
+        return response.data
+    } catch (error) {
+        // The backend returns 502 (not 2xx) when every requested provider failed, but the
+        // body still has the same { message, results } shape with each failure reason — treat
+        // that as data to show, not a generic thrown error, same as a partial success would be.
+        if (Array.isArray(error.response?.data?.results)) {
+            return error.response.data
+        }
+        throw error
+    }
 }
 
 /**

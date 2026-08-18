@@ -1,42 +1,47 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import "../style/interview.scss"
 import { useInterview } from "../hooks/useInterview"
-import { DownloadIcon } from "../components/icons.jsx"
+import { Link } from "react-router"
+import { snapStep, stepRank, invertIn, countUp, riffle } from "../../../lib/animations/blind"
+import { DownloadIcon, ChevronRightIcon } from "../components/icons.jsx"
 
 /**
- * Report detail page, rendered at /interview/:interviewId.
+ * Report detail page at /interview/:interviewId, in the Depot Blind world.
  *
- * `report` is one interview-report document (matchScore, technicalQuestion[],
- * behavioralQuestion[], skillGap[], preparationPlan[]). useInterview() reads
- * :interviewId itself (via useParams internally) and fetches the matching
- * report on mount — this component only renders whatever it returns.
- *
- * activeSection is local view state (which of the three tabs is open), not
- * data that needs to survive a refetch or be shared elsewhere.
+ * The three sections are courses on one roll: selecting a course steps it under
+ * the fixed window, and the others recede. useInterview() reads :interviewId
+ * itself and fetches on mount; this component only renders what it returns.
  */
 
-// Renders one tab's list of Q&A cards. Shared by both the technical and
-// behavioral sections since they're the same shape.
-const QuestionList = ({ questions }) => {
+const SECTIONS = [
+    { id: "technical", label: "Technical" },
+    { id: "behavioral", label: "Behavioral" },
+    { id: "roadmap", label: "Roadmap" },
+]
+
+const WORKING_COURSES = ["READING REPORT", "SETTING COURSES", "PRINTING"]
+
+const QuestionList = ({ questions, listRef }) => {
     if (!questions.length) {
-        return <p className='empty-note'>No questions in this section yet.</p>
+        // Absence drawn as deliberately as presence: a bared weave, not blank space.
+        return <p className="bare">This course is empty — nothing was printed here.</p>
     }
 
     return (
-        <ol className='question-list'>
+        <ol className="qa" ref={listRef}>
             {questions.map((item, index) => (
-                <li className='question-card' key={item.question ?? index}>
-                    <span className='question-card__index'>{index + 1}</span>
-                    <h3 className='question-card__question'>{item.question}</h3>
+                <li className="qa__item" key={item.question ?? index}>
+                    <span className="qa__no">{String(index + 1).padStart(2, "0")}</span>
+                    <h3 className="qa__q">{item.question}</h3>
 
-                    <div className='question-card__block'>
-                        <p className='question-card__label'>Why they ask this</p>
-                        <p className='question-card__body'>{item.intention}</p>
+                    <div className="qa__block">
+                        <p className="qa__label">Why they ask this</p>
+                        <p className="qa__body">{item.intention}</p>
                     </div>
 
-                    <div className='question-card__block question-card__block--answer'>
-                        <p className='question-card__label'>How to answer</p>
-                        <p className='question-card__body'>{item.answer}</p>
+                    <div className="qa__block qa__block--answer">
+                        <p className="qa__label">How to answer</p>
+                        <p className="qa__body">{item.answer}</p>
                     </div>
                 </li>
             ))}
@@ -44,24 +49,22 @@ const QuestionList = ({ questions }) => {
     )
 }
 
-// Renders the day-by-day preparation plan as a numbered list of task cards.
-const Roadmap = ({ plan }) => {
+const Roadmap = ({ plan, listRef }) => {
     if (!plan.length) {
-        return <p className='empty-note'>No preparation plan yet.</p>
+        return <p className="bare">No preparation plan was printed for this report.</p>
     }
 
     return (
-        <ol className='roadmap'>
+        <ol className="plan" ref={listRef}>
             {plan.map((entry, index) => (
-                <li className='roadmap__day' key={entry._id ?? entry.day ?? index}>
-                    <div className='roadmap__marker'>
-                        <span className='roadmap__day-label'>Day</span>
-                        <span className='roadmap__day-number'>{entry.day}</span>
+                <li className="plan__day" key={entry._id ?? entry.day ?? index}>
+                    <div className="plan__marker">
+                        <span className="plan__day-label">Day</span>
+                        <span className="plan__day-no">{entry.day}</span>
                     </div>
-
-                    <div className='roadmap__content'>
-                        <h3 className='roadmap__focus'>{entry.focus}</h3>
-                        <ul className='roadmap__tasks'>
+                    <div className="plan__content">
+                        <h3 className="plan__focus">{entry.focus}</h3>
+                        <ul className="plan__tasks">
                             {(entry.tasks ?? []).map((task, taskIndex) => (
                                 <li key={task ?? taskIndex}>{task}</li>
                             ))}
@@ -73,30 +76,16 @@ const Roadmap = ({ plan }) => {
     )
 }
 
-// Left-rail tab definitions — id matches activeSection, label is the
-// heading shown above the content once that tab is selected.
-const SECTIONS = [
-    { id: "technical", label: "Technical Questions" },
-    { id: "behavioral", label: "Behavioral Questions" },
-    { id: "roadmap", label: "Preparation Roadmap" },
-]
-
 const Interview = () => {
-
     const [activeSection, setActiveSection] = useState("technical")
     const [resumeError, setResumeError] = useState(null)
-    // report starts out null until useInterview's effect resolves the fetch,
-    // so every read below falls back to an empty value via `?.` / `??`.
-    const { report, loading, downloadResume, downloadingResume } = useInterview()
+    const { report, loading, error, downloadResume, downloadingResume } = useInterview()
 
-    const handleDownloadResume = async () => {
-        setResumeError(null)
-        try {
-            await downloadResume(report._id)
-        } catch (error) {
-            setResumeError(error.message || "Failed to generate the tailored resume. Please try again.")
-        }
-    }
+    const windowRef = useRef(null)
+    const scoreRef = useRef(null)
+    const scorePanelRef = useRef(null)
+    const listRef = useRef(null)
+    const riffleRef = useRef(null)
 
     const technicalQuestion = report?.technicalQuestion ?? []
     const behavioralQuestion = report?.behavioralQuestion ?? []
@@ -104,116 +93,152 @@ const Interview = () => {
     const skillGap = report?.skillGap ?? []
     const matchScore = report?.matchScore
 
-    const activeLabel =
-        SECTIONS.find((section) => section.id === activeSection)?.label ?? ""
-
-    if (loading) {
-        return (
-            <main className='loading-screen'>
-                <h1>Loading your interview report...</h1>
-            </main>
-        )
-    }
-
-    // Picks which panel to show in the main column for the active tab.
-    const renderSection = () => {
-        if (activeSection === "technical") {
-            return <QuestionList questions={technicalQuestion} />
-        }
-
-        if (activeSection === "behavioral") {
-            return <QuestionList questions={behavioralQuestion} />
-        }
-
-        return <Roadmap plan={preparationPlan} />
-    }
-
-    const sectionCount = {
+    const counts = {
         technical: technicalQuestion.length,
         behavioral: behavioralQuestion.length,
         roadmap: preparationPlan.length,
     }
 
-    return (
-        <main className='interview'>
-            {/* Left rail: tab switcher between the three report sections. */}
-            <nav className='interview__rail interview__rail--left' aria-label='Report sections'>
-                <ul className='section-nav'>
-                    {SECTIONS.map((section) => {
-                        const isActive = section.id === activeSection
+    // The destination seats itself, then the score panel inverts into rank.
+    useEffect(() => {
+        if (loading || !report) return
+        const a = snapStep(windowRef.current, { from: "60%" })
+        const b = invertIn(scorePanelRef.current, { delay: 0.15 })
+        const c = typeof matchScore === "number"
+            ? countUp(scoreRef.current, matchScore, { delay: 0.3 })
+            : null
+        return () => { a?.kill(); b?.kill(); c?.kill() }
+    }, [loading, report, matchScore])
 
-                        return (
-                            <li key={section.id}>
-                                <button
-                                    type='button'
-                                    className={`section-nav__item${isActive ? " section-nav__item--active" : ""}`}
-                                    aria-current={isActive ? "true" : undefined}
-                                    onClick={() => setActiveSection(section.id)}
-                                >
-                                    <span className='section-nav__label'>{section.label}</span>
-                                    <span className='section-nav__count'>{sectionCount[section.id]}</span>
-                                </button>
-                            </li>
-                        )
-                    })}
-                </ul>
-            </nav>
+    // Changing course steps the new one under the window.
+    useEffect(() => {
+        if (loading || !report) return
+        const t = stepRank(listRef.current?.children, { stagger: 0.04 })
+        return () => t?.kill()
+    }, [activeSection, loading, report])
 
-            {/* Main column: header with match score, then the active tab's content. */}
-            <section className='interview__main' aria-live='polite'>
-                <header className='interview__main-header'>
-                    <h1 className='interview__title'>{activeLabel}</h1>
-                    <div className='interview__header-actions'>
-                        {typeof matchScore === "number" && (
-                            <p className='match-score'>
-                                <span className='match-score__label'>Match</span>
-                                <span className='match-score__value'>{matchScore}%</span>
-                            </p>
-                        )}
-                        {report && (
-                            <button
-                                type='button'
-                                className='button resume-download-button'
-                                onClick={handleDownloadResume}
-                                disabled={downloadingResume}
-                                aria-describedby={resumeError ? 'resume-download-error' : undefined}
-                            >
-                                <DownloadIcon />
-                                {downloadingResume ? "Generating..." : "Download Tailored Resume"}
-                            </button>
-                        )}
-                    </div>
-                </header>
+    useEffect(() => {
+        if (!downloadingResume) return
+        const tl = riffle(riffleRef.current, WORKING_COURSES)
+        return () => tl?.kill()
+    }, [downloadingResume])
 
-                {resumeError && (
-                    <p id='resume-download-error' className='resume-download-error' role='alert'>{resumeError}</p>
-                )}
+    const handleDownloadResume = async () => {
+        setResumeError(null)
+        try {
+            await downloadResume(report._id)
+        } catch (err) {
+            setResumeError(err.message || "The resume could not be printed. Try again.")
+        }
+    }
 
-                <div className='interview__content'>
-                    {report ? renderSection() : <p className='empty-note'>No report loaded.</p>}
+    if (loading) {
+        return (
+            <main className="depot depot--working">
+                <div className="blind" aria-live="polite">
+                    <p className="blind__rule">Fetching report</p>
+                    <p className="blind__course">READING REPORT</p>
                 </div>
+            </main>
+        )
+    }
+
+    if (error || !report) {
+        return (
+            <main className="depot depot--fault">
+                <div className="blind blind--fault">
+                    <p className="blind__rule">Service fault</p>
+                    <p className="blind__course">NOT ON THE ROLL</p>
+                    <p className="blind__note">{error || "This report could not be found."}</p>
+                    <Link className="act" to="/">Back to the depot</Link>
+                </div>
+            </main>
+        )
+    }
+
+    const renderCourse = () => {
+        if (activeSection === "technical") return <QuestionList questions={technicalQuestion} listRef={listRef} />
+        if (activeSection === "behavioral") return <QuestionList questions={behavioralQuestion} listRef={listRef} />
+        return <Roadmap plan={preparationPlan} listRef={listRef} />
+    }
+
+    return (
+        <main className="report">
+            <header className="report__head" ref={windowRef}>
+                <Link className="report__back" to="/">
+                    <ChevronRightIcon className="report__back-arrow" /> Depot
+                </Link>
+                <div className="blind__window">
+                    <span className="blind__code">{(report.provider ?? "rep").slice(0, 3).toUpperCase()} {String(matchScore ?? 0).padStart(2, "0")}</span>
+                    <h1 className="report__course">{report.title || "Untitled"}</h1>
+                </div>
+            </header>
+
+            {/* Rank is inversion: the score alone prints dark on pale cloth. */}
+            <section className="score" ref={scorePanelRef}>
+                <p className="score__legend">Match</p>
+                <p className="score__value">
+                    <span ref={scoreRef}>{typeof matchScore === "number" ? 0 : "—"}</span>
+                    {typeof matchScore === "number" && <span className="score__pct">%</span>}
+                </p>
+                <button
+                    className="act act--lead score__act"
+                    onClick={handleDownloadResume}
+                    disabled={downloadingResume}
+                    aria-describedby={resumeError ? "resume-fault" : undefined}
+                >
+                    <DownloadIcon />
+                    {downloadingResume ? "Printing…" : "Print tailored resume"}
+                </button>
+                {downloadingResume && (
+                    <p className="score__working" ref={riffleRef} aria-live="polite">READING REPORT</p>
+                )}
+                {resumeError && (
+                    <p id="resume-fault" className="score__fault" role="alert">{resumeError}</p>
+                )}
             </section>
 
-            {/* Right rail: always-visible skill gaps, independent of the active tab. */}
-            <aside className='interview__rail interview__rail--right' aria-labelledby='skillGapHeading'>
-                <h2 id='skillGapHeading' className='rail-heading'>Skill Gaps</h2>
-
-                {skillGap.length ? (
-                    <ul className='skill-gaps'>
-                        {skillGap.map((gap, index) => (
-                            <li
-                                className={`skill-chip skill-chip--${gap.severity ?? "low"}`}
-                                key={gap.skill ?? index}
+            <div className="report__body">
+                {/* The roll: selecting a course steps it under the window. */}
+                <nav className="courses" aria-label="Report sections">
+                    {SECTIONS.map((section) => {
+                        const isLive = section.id === activeSection
+                        return (
+                            <button
+                                key={section.id}
+                                type="button"
+                                className={`courses__item${isLive ? " is-live" : ""}`}
+                                aria-current={isLive ? "true" : undefined}
+                                onClick={() => setActiveSection(section.id)}
                             >
-                                <span className='skill-chip__name'>{gap.skill}</span>
-                                <span className='skill-chip__severity'>{gap.severity}</span>
-                            </li>
-                        ))}
-                    </ul>
-                ) : (
-                    <p className='empty-note'>No gaps identified.</p>
-                )}
-            </aside>
+                                <span className="courses__label">{section.label}</span>
+                                <span className="courses__count">{counts[section.id]}</span>
+                            </button>
+                        )
+                    })}
+                </nav>
+
+                <section className="window" aria-live="polite">
+                    {renderCourse()}
+                </section>
+
+                <aside className="gaps" aria-labelledby="gaps-rule">
+                    <h2 id="gaps-rule" className="gaps__rule">Skill gaps</h2>
+                    {skillGap.length ? (
+                        <ul className="gaps__list">
+                            {/* Magnitude as material weight: severity sets the bar's mass. */}
+                            {skillGap.map((gap, index) => (
+                                <li className={`gap gap--${gap.severity ?? "low"}`} key={gap.skill ?? index}>
+                                    <span className="gap__name">{gap.skill}</span>
+                                    <span className="gap__sev">{gap.severity}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="bare">No gaps were identified.</p>
+                    )}
+                </aside>
+            </div>
         </main>
     )
 }

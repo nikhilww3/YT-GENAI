@@ -1,465 +1,406 @@
 @use "./theme" as theme;
 
-.home {
+/* Depot Destination Blind — Home.
+   The cloth drenches the field; prose lives on bleached calico panels laid over
+   it; every legend is chrome-yellow condensed caps. Nothing glides. */
+
+.depot {
     @include theme.app-theme;
 
-    width: 100%;
     min-height: 100vh;
-    background-color: var(--surface-page);
+    width: 100%;
+    background-color: var(--cloth);
+    @include theme.weave;
+
+    color: var(--calico);
+    font-family: var(--face-prose);
 
     display: flex;
     flex-direction: column;
+    gap: var(--void);
+    padding: var(--void-lg) clamp(1rem, 4vw, 3rem);
     align-items: center;
-    gap: 2.5rem;
 
-    padding-block: clamp(2.5rem, 6vw, 5rem);
-    padding-inline: 1.5rem;
+    /* Browser surfaces belong to the design, not to the browser. */
+    ::selection { background: var(--legend); color: var(--ink); }
 
-    .sr-only {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        padding: 0;
-        overflow: hidden;
-        clip: rect(0, 0, 0, 0);
-        white-space: nowrap;
-        border: 0;
-    }
+    &--working,
+    &--fault { justify-content: center; }
 
-    /* ---------- Header ---------- */
-
-    &__header {
-        text-align: center;
-        max-width: 40rem;
-    }
-
-    &__title {
-        font-size: clamp(2rem, 4.5vw, 3.25rem);
-        line-height: 1.1;
-        letter-spacing: -0.02em;
-        color: var(--text-strong);
-    }
-
-    &__subtitle {
-        margin-top: 0.85rem;
-        font-size: 1.05rem;
-        line-height: 1.55;
-        color: var(--text-muted);
-    }
-
-    /* ---------- Card shell ---------- */
-
-    .interview-card {
-        width: 100%;
-        max-width: 68rem;
-        background-color: var(--surface-card);
-        border: 1px solid var(--border-soft);
-        border-radius: var(--radius-card);
-        overflow: hidden;
-    }
-
-    .interview-input-group {
-        display: flex;
-        align-items: stretch;
-    }
-
-    .left,
-    .right {
-        width: 50%;
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        padding: 1.75rem;
-    }
-
-    .left {
-        border-right: 1px solid var(--border-soft);
-    }
-
-    /* ---------- Panel headings ---------- */
-
-    .panel-heading {
+    &__foot {
+        width: min(72rem, 100%);
+        margin-top: auto;
+        padding-top: var(--void);
+        border-top: var(--seam);
         display: flex;
         justify-content: space-between;
-        align-items: center;
-        gap: 1rem;
-
-        &__title {
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-            font-size: 1.15rem;
-            color: var(--text-strong);
-        }
-
-        &__icon {
-            color: var(--accent);
-        }
-    }
-
-    .badge {
-        font-size: 0.7rem;
-        font-weight: 600;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-        padding: 0.3rem 0.6rem;
-        border-radius: 0.4rem;
-        background-color: var(--accent-soft);
-        color: var(--accent);
-        border: 1px solid rgba(255, 15, 98, 0.25);
-        white-space: nowrap;
-    }
-
-    /* ---------- Fields ---------- */
-
-    .field-label {
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-        font-size: 0.95rem;
-        font-weight: 600;
-        color: var(--text-strong);
-    }
-
-    .input-group {
-        display: flex;
-        flex-direction: column;
-        gap: 0.6rem;
-
-        &--grow {
-            flex: 1;
-        }
-    }
-
-    .textarea-shell {
-        position: relative;
-        flex: 1;
-        display: flex;
-    }
-
-    textarea {
-        width: 100%;
-        border: 1px solid var(--border-soft);
-        outline: none;
-        padding-inline: 1rem;
-        padding-block: 0.85rem;
-        border-radius: var(--radius-field);
-        background-color: var(--surface-field);
-        color: var(--text-strong);
-        font-family: inherit;
-        font-size: 0.95rem;
-        line-height: 1.55;
-        resize: none;
-
-        transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-
-        &::placeholder {
-            color: var(--text-faint);
-        }
-
-        &:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px var(--accent-soft);
-        }
-    }
-
-    .textarea-shell textarea {
-        min-height: 26rem;
-        padding-bottom: 2.5rem;
-    }
-
-    #selfDescription {
-        min-height: 7rem;
-    }
-
-    .char-count {
-        position: absolute;
-        right: 1rem;
-        bottom: 0.85rem;
-        font-size: 0.8rem;
-        color: var(--text-faint);
-        pointer-events: none;
-    }
-
-    /* ---------- Resume upload ---------- */
-
-    .file-label {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        gap: 0.35rem;
-
-        padding-block: 2rem;
-        padding-inline: 1rem;
-        border: 1px dashed var(--border-soft);
-        border-radius: var(--radius-field);
-        background-color: var(--surface-raised);
-        cursor: pointer;
-        text-align: center;
-
-        transition: border-color 0.2s ease-in-out, background-color 0.2s ease-in-out;
-
-        &__icon {
-            color: var(--accent);
-            margin-bottom: 0.4rem;
-        }
-
-        &__title {
-            font-weight: 600;
-            color: var(--text-strong);
-        }
-
-        &__hint {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-        }
-
-        &:hover,
-        &--dragging {
-            border-color: var(--accent);
-            background-color: #20263a;
-        }
-    }
-
-    /* ---------- Divider ---------- */
-
-    .divider {
-        display: flex;
-        align-items: center;
-        gap: 0.85rem;
-        color: var(--text-faint);
-        font-size: 0.8rem;
-        letter-spacing: 0.08em;
-
-        &::before,
-        &::after {
-            content: "";
-            flex: 1;
-            height: 1px;
-            background-color: var(--border-soft);
-        }
-    }
-
-    /* ---------- Hint banner ---------- */
-
-    .hint-banner {
-        display: flex;
-        align-items: flex-start;
-        gap: 0.7rem;
-
-        padding: 0.9rem 1rem;
-        border-radius: var(--radius-field);
-        background-color: rgba(37, 99, 235, 0.12);
-        border: 1px solid rgba(59, 130, 246, 0.3);
-        color: #cdd9f5;
-        font-size: 0.9rem;
-        line-height: 1.5;
-
-        &__icon {
-            flex-shrink: 0;
-            margin-top: 0.15rem;
-            color: #60a5fa;
-        }
-
-        strong {
-            color: var(--text-strong);
-        }
-    }
-
-    /* ---------- Card footer ---------- */
-
-    .interview-card__footer {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 1rem;
+        align-items: baseline;
         flex-wrap: wrap;
-
-        padding: 1.5rem 1.75rem;
-        border-top: 1px solid var(--border-soft);
+        gap: var(--u);
     }
-
-    .footer-note {
-        font-size: 0.9rem;
-        color: var(--text-muted);
-    }
-
-    .submit-button {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.6rem;
-        font-size: 1rem;
-        font-weight: 600;
-
-        &:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-    }
-
-    /* ---------- Recent reports ---------- */
-
-    .reports-section {
-        width: 100%;
-        max-width: 68rem;
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-
-        &__heading {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--text-strong);
-        }
-    }
-
-    .reports-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
-        gap: 0.85rem;
-        list-style: none;
-    }
-
-    .report-card {
-        &__button {
-            width: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 0.75rem;
-
-            padding: 1rem 1.1rem;
-            border: 1px solid var(--border-soft);
-            border-radius: var(--radius-field);
-            background-color: var(--surface-card);
-            color: inherit;
-            font-family: inherit;
-            text-align: left;
-            cursor: pointer;
-
-            transition: border-color 0.2s ease-in-out, background-color 0.2s ease-in-out, transform 0.15s ease-in-out;
-
-            &:hover,
-            &:focus-visible {
-                border-color: var(--accent);
-                background-color: var(--surface-raised);
-                transform: translateY(-2px);
-            }
-
-            &:focus-visible {
-                outline: 2px solid var(--accent);
-                outline-offset: 2px;
-            }
-
-            &:hover .report-card__chevron,
-            &:focus-visible .report-card__chevron {
-                color: var(--accent);
-                transform: translateX(2px);
-            }
-        }
-
-        &__info {
-            display: flex;
-            flex-direction: column;
-            gap: 0.3rem;
-            min-width: 0;
-        }
-
-        &__title {
-            font-size: 0.95rem;
-            font-weight: 600;
-            color: var(--text-strong);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        &__meta {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-        }
-
-        &__aside {
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-            flex-shrink: 0;
-        }
-
-        &__score {
-            font-size: 0.75rem;
-            font-weight: 600;
-            padding: 0.25rem 0.6rem;
-            border-radius: 999px;
-            background-color: var(--accent-soft);
-            color: var(--accent);
-            border: 1px solid rgba(255, 15, 98, 0.25);
-            white-space: nowrap;
-        }
-
-        &__chevron {
-            color: var(--text-faint);
-            transition: color 0.2s ease-in-out, transform 0.2s ease-in-out;
-        }
-    }
-
-    /* ---------- Page links ---------- */
 
     &__links {
         display: flex;
-        gap: 2rem;
-        flex-wrap: wrap;
-        justify-content: center;
+        gap: calc(var(--u) * 4);
 
         a {
-            color: var(--text-muted);
+            @include theme.legend(0.8rem, 600);
+            color: var(--calico);
+            opacity: 0.75;
             text-decoration: none;
-            font-size: 0.9rem;
+            text-underline-offset: 4px;
 
-            transition: color 0.2s ease-in-out;
-
-            &:hover,
-            &:focus-visible {
-                color: var(--text-strong);
-            }
+            &:hover, &:focus-visible { opacity: 1; text-decoration: underline; color: var(--legend); }
         }
     }
 
-    /* ---------- Responsive ---------- */
+    &__stamp {
+        @include theme.legend(0.8rem, 600);
+        color: var(--calico);
+        opacity: 0.82;
+    }
+}
 
-    @media (max-width: 860px) {
-        .interview-input-group {
-            flex-direction: column;
-        }
+/* ---------- The fixed window ---------- */
 
-        .left,
-        .right {
-            width: 100%;
-        }
+.blind {
+    width: min(72rem, 100%);
+    padding: var(--void) 0 0;
+    text-align: left;
 
-        .left {
-            border-right: none;
-            border-bottom: 1px solid var(--border-soft);
-        }
+    &__rule {
+        @include theme.legend(0.85rem, 600);
+        color: var(--legend);
+        margin-bottom: calc(var(--u) * 2);
+    }
 
-        .textarea-shell textarea {
-            min-height: 14rem;
-        }
+    /* The aperture the course steps under: framed top and bottom, the next
+       course implied by the seam beneath it. */
+    &__window {
+        display: flex;
+        align-items: baseline;
+        gap: calc(var(--u) * 3);
+        padding: calc(var(--u) * 2) 0;
+        border-top: 2px solid var(--legend);
+        border-bottom: 1px dashed rgba(245, 197, 24, 0.45);
+        overflow: hidden;
+    }
 
-        .interview-card__footer {
-            flex-direction: column;
-            align-items: stretch;
-            text-align: center;
-        }
+    /* Each course leads with its inverted destination code. */
+    &__code {
+        @include theme.legend(0.9rem, 700);
+        flex-shrink: 0;
+        align-self: center;
+        padding: calc(var(--u) * 0.75) var(--u);
+        background-color: var(--legend);
+        color: var(--ink);
+        font-variant-numeric: tabular-nums;
+    }
 
-        .submit-button {
-            justify-content: center;
-        }
+    /* Type reaching monumental scale as matter, not held at safe UI sizes. */
+    &__course {
+        @include theme.legend(clamp(2.75rem, 9vw, 6rem), 700);
+        color: var(--legend);
+        margin: 0;
+        /* the window clips the course as it steps under it */
+        overflow: hidden;
+    }
 
-        .reports-grid {
-            grid-template-columns: 1fr;
+    &__note {
+        margin-top: calc(var(--u) * 3);
+        max-width: 62ch;
+        font-size: 1.02rem;
+        line-height: 1.6;
+        color: var(--calico);
+        opacity: 0.86;
+    }
+
+    &--fault &__course { color: var(--sev-high); }
+}
+
+.depot--working .blind,
+.depot--fault .blind {
+    width: min(46rem, 100%);
+    text-align: center;
+
+    .blind__note { margin-inline: auto; }
+}
+
+/* ---------- The works: calico panels over cloth ---------- */
+
+.works {
+    width: min(72rem, 100%);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--void);
+    align-items: stretch;
+
+    &__course {
+        display: flex;
+        flex-direction: column;
+        gap: calc(var(--u) * 2);
+    }
+
+    &__legend {
+        @include theme.legend(0.82rem, 700);
+        color: var(--legend);
+
+        &--sub { margin-top: calc(var(--u) * 2); }
+    }
+
+    &__foot {
+        grid-column: 1 / -1;
+        display: flex;
+        justify-content: flex-end;
+        border-top: var(--seam);
+        padding-top: var(--void);
+    }
+
+    /* The destination column is one tall field, so it grows to meet the
+       stacked controls opposite instead of leaving a void beneath itself. */
+    &__course:first-child textarea { flex: 1; }
+
+    textarea {
+        width: 100%;
+        min-height: 12rem;
+        padding: calc(var(--u) * 2.5);
+        border: none;
+        border-radius: var(--radius);
+        @include theme.calico-weave;
+        color: var(--ink);
+        font-family: var(--face-prose);
+        font-size: 0.98rem;
+        line-height: 1.6;
+        resize: vertical;
+        outline: none;
+
+        &::placeholder { color: var(--ink-soft); }
+        &:focus-visible { box-shadow: 0 0 0 3px var(--legend); }
+    }
+}
+
+/* Cloth has no rounded corners; the drop zone is stitched, not rounded. */
+.drop {
+    display: flex;
+    align-items: center;
+    gap: calc(var(--u) * 2);
+    padding: calc(var(--u) * 2.5);
+    border: var(--stitch);
+    border-radius: var(--radius);
+    background-color: rgba(237, 232, 220, 0.06);
+    cursor: pointer;
+    transition: background-color var(--settle), border-color var(--settle);
+
+    &:hover { background-color: rgba(237, 232, 220, 0.12); border-color: var(--legend); }
+
+    &__icon { color: var(--legend); flex-shrink: 0; }
+
+    &__text { font-size: 0.92rem; color: var(--calico); word-break: break-word; }
+
+    input { display: none; }
+}
+
+/* ---------- Punched eyelet tape: the model selector ---------- */
+
+.tape {
+    position: relative;
+
+    &__window {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: calc(var(--u) * 2);
+        padding: calc(var(--u) * 2);
+        border: var(--seam);
+        border-radius: var(--radius);
+        background-color: rgba(18, 20, 15, 0.4);
+        color: var(--calico);
+        font-family: var(--face-prose);
+        cursor: pointer;
+        transition: border-color var(--settle);
+
+        &:hover, &[aria-expanded="true"] { border-color: var(--legend); }
+        &:focus-visible { outline: 2px solid var(--legend); outline-offset: 2px; }
+    }
+
+    &__eyelets { display: flex; gap: 4px; flex-shrink: 0; }
+
+    &__eyelet {
+        width: 7px; height: 7px; border-radius: 50%;
+        background-color: rgba(237, 232, 220, 0.22);
+        transition: background-color var(--settle);
+
+        &.is-live { background-color: var(--legend); }
+    }
+
+    &__legend { @include theme.legend(0.8rem, 600); flex: 1; text-align: left; }
+
+    &__chevron {
+        color: var(--calico); opacity: 0.6; flex-shrink: 0;
+        transition: transform var(--settle);
+        &.is-open { transform: rotate(180deg); }
+    }
+
+    &__rank {
+        position: absolute;
+        top: calc(100% + var(--u));
+        left: 0; right: 0;
+        z-index: 20;
+        background-color: var(--cloth-deep);
+        border: 1px solid var(--legend);
+        border-radius: var(--radius);
+        overflow: hidden;
+    }
+
+    &__course {
+        display: flex;
+        align-items: center;
+        gap: calc(var(--u) * 1.5);
+        padding: calc(var(--u) * 2);
+        cursor: pointer;
+        transition: background-color var(--settle);
+
+        &:hover { background-color: var(--cloth-lit); }
+
+        input { position: absolute; opacity: 0; pointer-events: none; }
+
+        /* Rank is inversion: the live course prints dark on pale cloth. */
+        &:has(input:checked) {
+            background-color: var(--legend);
+            .tape__course-label, .tape__course-note { color: var(--ink); }
         }
     }
+
+    &__course-label { @include theme.legend(0.8rem, 600); flex: 1; color: var(--calico); }
+    &__course-note  { font-size: 0.75rem; color: var(--calico); opacity: 0.7; }
+    &__check { color: var(--ink); flex-shrink: 0; }
+}
+
+/* ---------- Actions ---------- */
+
+.act {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--u);
+    padding: calc(var(--u) * 2) calc(var(--u) * 4);
+    border: 1px solid var(--legend);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--legend);
+    font-family: var(--face-legend);
+    font-size: 0.95rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: transform var(--settle), background-color var(--settle), color var(--settle);
+
+    &:hover:not(:disabled) { transform: translateY(-2px); }
+    &:active:not(:disabled) { transform: translateY(0); }
+    &:focus-visible { outline: 2px solid var(--calico); outline-offset: 2px; }
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* The lead panel alone prints dark on pale cloth. */
+    &--lead { background-color: var(--legend); color: var(--ink); font-size: 1.05rem; }
+    &--quiet { padding: var(--u) 0; border: none; }
+}
+
+/* ---------- Signals ---------- */
+
+.signals {
+    width: min(72rem, 100%);
+    display: flex;
+    flex-direction: column;
+    gap: var(--u);
+}
+
+.signal {
+    padding: calc(var(--u) * 2.5);
+    border-radius: var(--radius);
+    background-color: rgba(18, 20, 15, 0.4);
+    /* Severity is dyed into the legend itself and the seam under it — the
+       world marks rank by ink and stitch, never by a slab down one edge. */
+    border-bottom: 2px solid var(--sev-low);
+
+    &--error { border-bottom-color: var(--sev-high); }
+    &--success { border-bottom-color: var(--legend); }
+
+    &__legend { @include theme.legend(0.8rem, 700); color: var(--legend); }
+    &--error &__legend { color: var(--sev-high); }
+    &__note { margin-top: var(--u); font-size: 0.95rem; line-height: 1.55; color: var(--calico); }
+}
+
+/* ---------- The roll: saved courses ---------- */
+
+.roll {
+    width: min(72rem, 100%);
+
+    &__rule {
+        @include theme.legend(0.85rem, 700);
+        color: var(--legend);
+        padding-bottom: calc(var(--u) * 2);
+        border-bottom: var(--seam);
+    }
+
+    &__rank { list-style: none; margin: 0; padding: 0; }
+}
+
+/* Identical ruled furniture on every course, so the rank scans in one pass. */
+.course {
+    border-bottom: var(--seam);
+
+    &__link {
+        display: grid;
+        clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+        grid-template-columns: 1fr auto auto;
+        align-items: center;
+        gap: calc(var(--u) * 3);
+        padding: calc(var(--u) * 3) var(--u);
+        text-decoration: none;
+        color: var(--calico);
+        transition: background-color var(--settle), transform var(--settle);
+
+        &:hover, &:focus-visible {
+            background-color: var(--cloth-lit);
+            transform: translateX(calc(var(--u) * 2));
+            outline: none;
+        }
+        &:focus-visible { box-shadow: inset 3px 0 0 var(--legend); }
+    }
+
+    &__legend {
+        @include theme.legend(1.15rem, 600);
+        color: var(--calico);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    &__facts {
+        display: flex;
+        gap: calc(var(--u) * 3);
+        font-size: 0.78rem;
+        opacity: 0.7;
+        font-variant-numeric: tabular-nums;
+    }
+
+    &__score { color: var(--legend); opacity: 1; font-weight: 600; }
+
+    &__arrow { color: var(--legend); flex-shrink: 0; }
+}
+
+/* ---------- Narrow ---------- */
+
+@media (max-width: 860px) {
+    .works { grid-template-columns: 1fr; }
+    .works__foot { justify-content: stretch; }
+    .act--lead { width: 100%; justify-content: center; }
+
+    .course__link { grid-template-columns: 1fr auto; }
+    .course__facts { grid-column: 1 / -1; }
+}
+
+/* Nothing moves for a reader who asked for stillness. */
+@media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }

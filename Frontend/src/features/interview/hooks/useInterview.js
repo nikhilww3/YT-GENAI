@@ -22,49 +22,90 @@ export const useInterview = () => {
     // takeover, but a resume download is a single button's own spinner and
     // shouldn't block the rest of the report from being visible/usable.
     const [downloadingResume, setDownloadingResume] = useState(false)
+    // Page-level failure (e.g. the report list couldn't load) — rendered as a
+    // full error screen with a retry, distinct from generationSummary below
+    // which reports the outcome of one generation attempt.
+    const [error, setError] = useState(null)
+    // Per-provider outcome of the most recent generate, in the same shape the
+    // backend returns. Also settable by callers for client-side validation
+    // errors, so the UI has exactly one place to render "what just happened".
+    const [generationSummary, setGenerationSummary] = useState([])
 
-    const generateReport = useCallback(async ({jobDescription, selfDescription, resumeFile}) => {
+    const fetchReports = useCallback(async () => {
         setLoading(true)
-        try {
-            const response = await generateInterviewReport({jobDescription, selfDescription, resumeFile})
-            setReport(response.interviewReport)
-            return response.interviewReport
-        } catch (error) {
-            console.error("Error generating interview report:", error)
-            throw error
-        } finally {
-            setLoading(false)
-        }
-    }, [setLoading, setReport])
-
-
-    const getReportById = useCallback(async (id) => {
-        setLoading(true)
-        try {
-            const response = await getInterviewReportById(id)
-            setReport(response.interviewReport)
-            return response.interviewReport
-        } catch (error) {
-            console.error("Error fetching interview report by ID:", error)
-            throw error
-        } finally {
-            setLoading(false)
-        }
-    }, [setLoading, setReport])
-
-    const getReports = useCallback(async () => {
-        setLoading(true)
+        setError(null)
         try {
             const response = await getAllInterviewReports()
             setReports(response.interviewReports)
             return response.interviewReports
-        } catch (error) {
-            console.error("Error fetching interview reports:", error)
-            throw error
+        } catch (err) {
+            // A user with no reports yet gets a 404 from the list endpoint —
+            // that's an empty state, not an error worth blocking the page for.
+            if (err.response?.status === 404) {
+                setReports([])
+                return []
+            }
+            console.error("Error fetching interview reports:", err)
+            setError("We couldn't load your reports. Please try again.")
+            return []
         } finally {
             setLoading(false)
         }
     }, [setLoading, setReports])
+
+    // Generates a report with the single selected provider. The backend takes
+    // a providers[] array (it can generate several at once), so the one
+    // choice is wrapped here rather than leaking that shape into the UI.
+    const generateReport = useCallback(async ({jobDescription, selfDescription, resumeFile, providerId}) => {
+        setLoading(true)
+        try {
+            const response = await generateInterviewReport({
+                jobDescription,
+                selfDescription,
+                resumeFile,
+                providers: [providerId]
+            })
+
+            // Normalize for rendering: the backend's success results carry the
+            // whole interviewReport object and no message, so flatten out the
+            // id and supply copy the UI can show directly.
+            const results = (response.results ?? []).map((result) =>
+                result.status === "success"
+                    ? {
+                        ...result,
+                        reportId: result.interviewReport?._id,
+                        message: "Report generated successfully."
+                    }
+                    : result
+            )
+
+            setGenerationSummary(results)
+            await fetchReports()
+            return results
+        } catch (err) {
+            console.error("Error generating interview report:", err)
+            throw err
+        } finally {
+            setLoading(false)
+        }
+    }, [setLoading, fetchReports])
+
+
+    const getReportById = useCallback(async (id) => {
+        setLoading(true)
+        setError(null)
+        try {
+            const response = await getInterviewReportById(id)
+            setReport(response.interviewReport)
+            return response.interviewReport
+        } catch (err) {
+            console.error("Error fetching interview report by ID:", err)
+            setError("We couldn't load this report. Please try again.")
+            return null
+        } finally {
+            setLoading(false)
+        }
+    }, [setLoading, setReport])
 
     // Takes interviewId explicitly (like getReportById) rather than closing
     // over the route param — useInterview() is also called from Home.jsx,
@@ -75,30 +116,33 @@ export const useInterview = () => {
         try {
             const { blob, filename } = await fetchTailoredResume(id)
             downloadBlob(blob, filename)
-        } catch (error) {
-            console.error("Error downloading tailored resume:", error)
-            throw error
+        } catch (err) {
+            console.error("Error downloading tailored resume:", err)
+            throw err
         } finally {
             setDownloadingResume(false)
         }
     }, [])
 
+    // Only the detail page auto-fetches here — Home calls fetchReports()
+    // itself, so auto-fetching the list too would double-request on mount.
     useEffect(() => {
         if (interviewId) {
             getReportById(interviewId)
-        } else {
-            getReports()
         }
-    }, [interviewId, getReportById, getReports])
+    }, [interviewId, getReportById])
 
 
     return {
         loading,
+        error,
         report,
         reports,
+        generationSummary,
+        setGenerationSummary,
         generateReport,
         getReportById,
-        getReports,
+        fetchReports,
         downloadResume,
         downloadingResume
     }
