@@ -2,3 +2,14 @@
 .gstack/
 .serena/
 Frontend/.impeccable/
+
+# Claude Code session/working state — not project source, don't commit
+backups/
+cache/
+file-history/
+history.jsonl
+projects/
+sessions/
+shell-snapshots/
+tasks/
+.last-cleanup
