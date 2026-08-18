@@ -46,7 +46,22 @@ Edit `.env` and set:
 ```env
 MONGO_URL=mongodb://127.0.0.1:27017/yt-genai   # or your Atlas URL
 JWT_SECRET=your-long-random-secret-here
+GOOGLE_GENAI_API_KEY=your-gemini-key            # https://aistudio.google.com/apikey
 ```
+
+`GOOGLE_GENAI_API_KEY` is required — Gemini is the default provider for interview reports and
+the only provider used for the tailored-resume PDF feature.
+
+Optionally, to let users pick alternate providers (free, no credit card) when generating an
+interview report, also set:
+
+```env
+NVIDIA_API_KEY=your-nvidia-key                  # https://build.nvidia.com/settings/api-keys
+HUGGINGFACE_API_KEY=your-hf-token                # https://huggingface.co/settings/tokens
+```
+
+Leaving either blank just means that checkbox on the Home page form will fail with a clear
+"not configured" error if someone selects it — the rest of the app is unaffected.
 
 > **Never commit `.env`** — it contains secrets. Only `.env.example` (placeholders) goes in git.
 

@@ -5,8 +5,38 @@ const { generateTailoredResumeContent, renderResumeTemplate, compileLatexToPdf, 
 
 
 
+const KNOWN_PROVIDERS = generateInterviewReport.PROVIDERS
+const DEFAULT_PROVIDERS = ["gemini"]
+
+function parseRequestedProviders(rawProviders) {
+  if (!rawProviders) {
+    return DEFAULT_PROVIDERS
+  }
+
+  let providers
+  try {
+    providers = typeof rawProviders === "string" ? JSON.parse(rawProviders) : rawProviders
+  } catch {
+    throw new Error("providers must be a JSON array of provider ids")
+  }
+
+  if (!Array.isArray(providers) || providers.length === 0) {
+    throw new Error("providers must be a non-empty array")
+  }
+
+  const unknown = providers.filter(p => !KNOWN_PROVIDERS[p])
+  if (unknown.length > 0) {
+    throw new Error(`Unknown provider(s): ${unknown.join(", ")}`)
+  }
+
+  return providers
+}
+
 /**
-@description Controller to generate an interview report based on the user's self-description, resume PDF, and job description. It extracts text from the uploaded resume file, calls the AI service to generate the report, and saves it to the database.
+@description Controller to generate one interview report per requested AI provider, from the
+same resume PDF/self-description/job description. Each provider succeeds or fails independently
+— one provider failing (bad/missing key, rate limit, malformed output) never blocks the others,
+and there is no silent fallback between providers.
 @route POST /api/interview/
 @access Private
  */
@@ -17,34 +47,61 @@ async function generateInterviewReportController(req, res) {
       return res.status(400).json({ message: "Resume file is required" })
     }
 
+    let providers
+    try {
+      providers = parseRequestedProviders(req.body.providers)
+    } catch (err) {
+      return res.status(400).json({ message: err.message })
+    }
+
     const parser = new PDFParse({ data: Uint8Array.from(req.file.buffer) })
     const resumeContent = await parser.getText()
     await parser.destroy() // frees memory, recommended by pdf-parse docs
 
     const { selfDescription, jobDescription } = req.body
 
-    const interviewReportByAi = await generateInterviewReport({
-      resume: resumeContent.text,
-      selfDescription,
-      jobDescription
-    })
+    const outcomes = await Promise.allSettled(providers.map(async (provider) => {
+      const interviewReportByAi = await generateInterviewReport({
+        resume: resumeContent.text,
+        selfDescription,
+        jobDescription,
+        provider
+      })
 
-    const interviewReport = await interviewReportModel.create({
+      const interviewReport = await interviewReportModel.create({
         user: req.user.id,
         resume: resumeContent.text,
         selfDescription,
         jobDescription,
-        title: interviewReportByAi.title,
+        provider,
+        title: `${interviewReportByAi.title} (${KNOWN_PROVIDERS[provider].label})`,
         matchScore: interviewReportByAi.matchscore,
         technicalQuestion: interviewReportByAi.technicalQuestions,
         behavioralQuestion: interviewReportByAi.behavioralQuestions,
         skillGap: interviewReportByAi.skillsGap,
         preparationPlan: interviewReportByAi.preparationPlan
+      })
+
+      return interviewReport
+    }))
+
+    const results = outcomes.map((outcome, i) => {
+      const provider = providers[i]
+      const providerLabel = KNOWN_PROVIDERS[provider].label
+
+      if (outcome.status === "fulfilled") {
+        return { provider, providerLabel, status: "success", interviewReport: outcome.value }
+      }
+
+      console.error(`generateInterviewReportController error (${provider}):`, outcome.reason)
+      return { provider, providerLabel, status: "error", message: outcome.reason.message }
     })
 
-    res.status(201).json({
-      message: "Interview report generated successfully",
-      interviewReport
+    const anySucceeded = results.some(r => r.status === "success")
+
+    res.status(anySucceeded ? 201 : 502).json({
+      message: anySucceeded ? "Interview report generation finished" : "All providers failed to generate a report",
+      results
     })
   } catch (error) {
     console.error("generateInterviewReportController error:", error)
@@ -139,7 +196,17 @@ async function getOrGenerateTailoredResume(interviewReport) {
       return updated.tailoredResume
     })()
 
-    generation.finally(() => inFlightResumeGenerations.delete(interviewId))
+    // NOT .finally() — .finally() returns a new promise that re-rejects with
+    // the same reason when `generation` rejects, and since nothing attaches
+    // a handler to THAT derived promise (it's a bare statement, never
+    // stored/awaited), Node flags it as an unhandled rejection and crashes
+    // the whole process — even though `generation` itself is properly
+    // awaited and caught by the controller below. Verified live: a Gemini
+    // timeout during resume generation took the entire server down this way.
+    // .then(cleanup, cleanup) cleans up on both outcomes without ever
+    // producing a promise that rejects.
+    const cleanup = () => inFlightResumeGenerations.delete(interviewId)
+    generation.then(cleanup, cleanup)
     inFlightResumeGenerations.set(interviewId, generation)
   }
 

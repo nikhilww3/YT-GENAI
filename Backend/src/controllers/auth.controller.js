@@ -136,6 +136,14 @@ async function getMeController(req, res){
     // the req.user is create in middleware function and next function tranfer in next router
     const user = await userModel.findById(req.user.id)
 
+    // the JWT itself is stateless and stays "valid" even if the account it
+    // points at was deleted afterward — treat that the same as no session.
+    if(!user){
+        return res.status(401).json({
+            message: "User not found"
+        })
+    }
+
     return res.status(200).json({
         message: "user details fetched successfully",
         user: {

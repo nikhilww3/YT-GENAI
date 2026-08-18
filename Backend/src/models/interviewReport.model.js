@@ -167,6 +167,11 @@ const interviewReportSchema = new mongoose.Schema({
         min : 0,
         max : 100
     },
+    provider: {
+        type: String,
+        enum: ["gemini", "nvidia", "huggingface"],
+        default: "gemini"
+    },
     technicalQuestion: [technicalQuestionSchema],
     behavioralQuestion: [behavioralQuestionSchema],
     skillGap: [skillGapSchema],

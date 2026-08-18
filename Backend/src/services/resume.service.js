@@ -7,9 +7,15 @@ const path = require("path")
 const { execFile } = require("child_process")
 const Handlebars = require("handlebars")
 const { deepEscapeLatex } = require("../utils/latexEscape")
+const { sleep, MAX_ATTEMPTS, RETRY_BASE_DELAY_MS, TRANSIENT_STATUS_CODES, isTransientGeminiError, withRetry } = require("../utils/retryUtils")
 
+// Without an explicit timeout this falls through to undici's 5-minute headers
+// timeout. That is exactly what happened in practice: a stalled Gemini call
+// here hung, timed out as UND_ERR_HEADERS_TIMEOUT, and (before the unhandled
+// rejection was fixed) took the whole server down with it.
 const ai = new GoogleGenAI({
-    apiKey: process.env.GOOGLE_GENAI_API_KEY
+    apiKey: process.env.GOOGLE_GENAI_API_KEY,
+    httpOptions: { timeout: 60_000 }
 })
 
 const tailoredResumeSchema = z.object({
@@ -50,15 +56,6 @@ const tailoredResumeSchema = z.object({
 })
 
 const MODEL = "gemini-3.1-flash-lite"
-const MAX_ATTEMPTS = 3
-const RETRY_BASE_DELAY_MS = 1000
-const TRANSIENT_STATUS_CODES = [429, 500, 503]
-
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
-
-function isTransientError(err) {
-    return TRANSIENT_STATUS_CODES.some(code => String(err.message).includes(`"code":${code}`))
-}
 
 /**
  * Calls Gemini to produce structured resume content (never raw LaTeX) tailored
@@ -86,39 +83,18 @@ Rules you must follow exactly:
 5. Project links: only include a project's linkUrl if a URL for it is actually present in the source resume text. Never invent one.
 6. Tone: professional throughout.`
 
-    let lastError
-
-    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-        try {
-            const response = await ai.models.generateContent({
-                model: MODEL,
-                contents: prompt,
-                config: {
-                    responseMimeType: "application/json",
-                    responseSchema: z.toJSONSchema(tailoredResumeSchema)
-                }
-            })
-
-            // Gemini's structured-output mode is trusted to match the schema, but not
-            // blindly: parse it for real so a malformed/adversarial response fails
-            // loudly here instead of silently reaching the template with an
-            // unexpected shape.
-            return tailoredResumeSchema.parse(JSON.parse(response.text))
-        } catch (err) {
-            lastError = err
-
-            if (!isTransientError(err) || attempt === MAX_ATTEMPTS) {
-                break
+    return withRetry(
+        () => ai.models.generateContent({
+            model: MODEL,
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: z.toJSONSchema(tailoredResumeSchema)
             }
-
-            const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1)
-            console.warn(`${MODEL} attempt ${attempt} of ${MAX_ATTEMPTS} failed, retrying in ${delay}ms`)
-            await sleep(delay)
-        }
-    }
-
-    console.error("Failed to generate tailored resume content:", lastError)
-    throw lastError
+        }),
+        isTransientGeminiError,
+        MODEL
+    ).then(response => tailoredResumeSchema.parse(JSON.parse(response.text)))
 }
 
 /* Turns escaped per-field content into the flat set of ready-to-insert LaTeX
