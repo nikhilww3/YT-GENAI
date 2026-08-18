@@ -1,7 +1,7 @@
 const { PDFParse } = require("pdf-parse")
 const generateInterviewReport = require("../services/ai.service")
 const interviewReportModel = require("../models/interviewReport.model")
-const { generateTailoredResumeContent, renderResumeTemplate, compileLatexToPdf, isValidTailoredResume } = require("../services/resume.service")
+const { generateTailoredResumeContent, renderResumeTemplate, getOrCompileTailoredResumePdf, isValidTailoredResume } = require("../services/resume.service")
 
 
 
@@ -214,11 +214,32 @@ async function getOrGenerateTailoredResume(interviewReport) {
 }
 
 /**
+ * Shared by both download endpoints below: finds the report, checks it has a
+ * resume, and returns the (cached-or-generated) tailored resume content.
+ * Throws a { status, message } error the callers turn into the right HTTP
+ * response, so the 404/400 checks aren't duplicated between them.
+ */
+async function loadTailoredResumeForDownload(interviewId, userId) {
+  const interviewReport = await interviewReportModel.findOne({ _id: interviewId, user: userId })
+
+  if (!interviewReport) {
+    throw Object.assign(new Error("Interview report not found"), { status: 404 })
+  }
+
+  if (!interviewReport.resume) {
+    throw Object.assign(new Error("A tailored resume requires an uploaded resume — this report was generated from a self-description only"), { status: 400 })
+  }
+
+  return getOrGenerateTailoredResume(interviewReport)
+}
+
+/**
  * @description Controller to generate (once, then reuse) a tailored resume PDF for
  * a report and stream it straight back as a download. Never touches server disk
  * or the database with the compiled PDF — only the AI-generated content behind
- * it is persisted, so a second click re-compiles from stored content instead of
- * calling Gemini again.
+ * it is persisted; the compiled PDF itself is cached in-memory by
+ * getOrCompileTailoredResumePdf so repeat downloads of the same content skip
+ * both the Gemini call and the Tectonic compile.
  * @route POST /api/interview/report/:interviewId/resume
  * @access Private
  */
@@ -226,20 +247,10 @@ async function downloadTailoredResumeController(req, res) {
   const { interviewId } = req.params
 
   try {
-    const interviewReport = await interviewReportModel.findOne({ _id: interviewId, user: req.user.id })
-
-    if (!interviewReport) {
-      return res.status(404).json({ message: "Interview report not found" })
-    }
-
-    if (!interviewReport.resume) {
-      return res.status(400).json({ message: "A tailored resume requires an uploaded resume — this report was generated from a self-description only" })
-    }
-
-    const tailoredResume = await getOrGenerateTailoredResume(interviewReport)
+    const tailoredResume = await loadTailoredResumeForDownload(interviewId, req.user.id)
 
     const texSource = await renderResumeTemplate(tailoredResume.toObject())
-    const pdfBuffer = await compileLatexToPdf(texSource)
+    const pdfBuffer = await getOrCompileTailoredResumePdf(interviewId, texSource)
 
     const safeName = tailoredResume.name.replace(/[^A-Za-z0-9 _-]/g, "").trim() || "Resume"
 
@@ -250,8 +261,37 @@ async function downloadTailoredResumeController(req, res) {
     res.send(pdfBuffer)
   } catch (error) {
     console.error("downloadTailoredResumeController error:", error)
-    res.status(500).json({ message: "Failed to generate tailored resume", error: error.message })
+    res.status(error.status || 500).json({ message: error.status ? error.message : "Failed to generate tailored resume", error: error.message })
   }
 }
 
-module.exports = { generateInterviewReportController, getInterviewReportController, getAllInterviewReportsController, downloadTailoredResumeController }
+/**
+ * @description Controller to download the rendered LaTeX (.tex) source behind
+ * the tailored resume, for users who want to edit/compile it themselves.
+ * Reuses the same cached AI content as the PDF download; skips
+ * compileLatexToPdf entirely since a plain-text download needs no Tectonic
+ * run at all.
+ * @route POST /api/interview/report/:interviewId/resume/latex
+ * @access Private
+ */
+async function downloadTailoredResumeLatexController(req, res) {
+  const { interviewId } = req.params
+
+  try {
+    const tailoredResume = await loadTailoredResumeForDownload(interviewId, req.user.id)
+    const texSource = await renderResumeTemplate(tailoredResume.toObject())
+
+    const safeName = tailoredResume.name.replace(/[^A-Za-z0-9 _-]/g, "").trim() || "Resume"
+
+    res.set({
+      "Content-Type": "application/x-tex; charset=utf-8",
+      "Content-Disposition": `attachment; filename="${safeName}_Resume.tex"`
+    })
+    res.send(texSource)
+  } catch (error) {
+    console.error("downloadTailoredResumeLatexController error:", error)
+    res.status(error.status || 500).json({ message: error.status ? error.message : "Failed to generate resume LaTeX source", error: error.message })
+  }
+}
+
+module.exports = { generateInterviewReportController, getInterviewReportController, getAllInterviewReportsController, downloadTailoredResumeController, downloadTailoredResumeLatexController }

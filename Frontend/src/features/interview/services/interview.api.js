@@ -67,9 +67,22 @@ export const getAllInterviewReports = async () => {
  * download is a DOM side effect that belongs in the hook layer, not here.
  */
 export const fetchTailoredResume = async (interviewId) => {
+    return fetchTailoredResumeFile(`/api/interview/report/${interviewId}/resume`, "Resume.pdf")
+}
+
+/**
+ * @description Fetches the tailored resume's LaTeX (.tex) source for a report,
+ * for users who want to edit or compile it themselves. Same POST-for-side-effects
+ * and blob-error-unwrapping reasoning as fetchTailoredResume above.
+ */
+export const fetchTailoredResumeLatex = async (interviewId) => {
+    return fetchTailoredResumeFile(`/api/interview/report/${interviewId}/resume/latex`, "Resume.tex")
+}
+
+async function fetchTailoredResumeFile(url, defaultFilename) {
     let response
     try {
-        response = await api.post(`/api/interview/report/${interviewId}/resume`, null, {
+        response = await api.post(url, null, {
             responseType: "blob"
         })
     } catch (error) {
@@ -92,7 +105,7 @@ export const fetchTailoredResume = async (interviewId) => {
 
     const disposition = response.headers["content-disposition"] || ""
     const filenameMatch = disposition.match(/filename="?([^"]+)"?/)
-    const filename = filenameMatch ? filenameMatch[1] : "Resume.pdf"
+    const filename = filenameMatch ? filenameMatch[1] : defaultFilename
 
     return { blob: response.data, filename }
 }

@@ -152,7 +152,14 @@ const Home = () => {
 
         try {
             setGenerationSummary([])
-            await generateReport({ jobDescription, selfDescription, resumeFile, providerId: selectedProvider })
+            const results = await generateReport({ jobDescription, selfDescription, resumeFile, providerId: selectedProvider })
+            // Only one provider is ever requested here, so a successful run is
+            // exactly one result — go straight to the report instead of making
+            // the user find and click "Read it" in the signals list below.
+            const success = results.find((result) => result.status === "success")
+            if (success?.reportId) {
+                navigate(`/interview/${success.reportId}`)
+            }
         } catch {
             setGenerationSummary([{ status: "error", providerLabel: "Line", message: "Could not reach the depot. Check your connection and try again." }])
         }

@@ -74,3 +74,10 @@ export const DownloadIcon = ({ className }) => (
         <path d="M5 21h14" />
     </svg>
 )
+
+export const CodeIcon = ({ className }) => (
+    <svg {...baseProps} className={className} width="18" height="18">
+        <path d="m8 6-5 6 5 6" />
+        <path d="m16 6 5 6-5 6" />
+    </svg>
+)

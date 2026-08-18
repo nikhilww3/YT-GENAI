@@ -41,6 +41,15 @@ interviewRouter.get("/report/:interviewId", authMiddleware.authUser, interviewCo
  */
 interviewRouter.post("/report/:interviewId/resume", authMiddleware.authUser, tailoredResumeLimiter, interviewController.downloadTailoredResumeController)
 
+/**
+ * @route POST /api/interview/report/:interviewId/resume/latex
+ * @description generate (or reuse) the tailored resume's LaTeX source and download it as a .tex file.
+ * Same POST-not-GET reasoning as the PDF route above, and shares its rate limiter
+ * since both can trigger the same Gemini call.
+ * @access private
+ */
+interviewRouter.post("/report/:interviewId/resume/latex", authMiddleware.authUser, tailoredResumeLimiter, interviewController.downloadTailoredResumeLatexController)
+
 
 /**
  * @route GET /api/interview/

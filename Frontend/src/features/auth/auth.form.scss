@@ -1,45 +1,105 @@
-/* Scoped to .auth-page. These were bare element selectors (main, form, a),
-   which Vite bundles into one global sheet — they were leaking onto every
-   other page in the app, including the interview Home page. */
-.auth-page{
-    height: 100vh;
-    width: 100%;
+@use "../interview/style/theme" as theme;
 
-    display: flex;
-    justify-content: center;
-    align-items: center;
+/* Depot Destination Blind — the gate.
+   Login/Register as one ticket stub laid on the cloth: same fixed-window
+   code chip, same calico weave, same chrome-yellow legends as the rest of
+   the depot. Shell (.depot, .depot--gate) is shared with Home/Interview via
+   home.scss; only the ticket card itself is scoped here. */
 
-    .form-container{
-        min-width: 350px;
+.ticket {
+    width: min(26rem, 100%);
+    @include theme.calico-weave;
+    @include theme.lifted;
+    border-radius: var(--radius);
+    padding: calc(var(--u) * 5) calc(var(--u) * 4);
+    color: var(--ink);
 
+    &__window {
         display: flex;
-        flex-direction: column;
-        gap: 1rem;
+        align-items: baseline;
+        gap: calc(var(--u) * 2);
+        padding-bottom: calc(var(--u) * 2);
+        border-bottom: 2px dashed rgba(18, 20, 15, 0.28);
+        margin-bottom: calc(var(--u) * 3);
     }
 
-    form{
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
+    &__course {
+        @include theme.legend(1.5rem, 700);
+        color: var(--ink);
+        margin: 0;
     }
 
-    .input-group{
+    &__note {
+        font-size: 0.92rem;
+        line-height: 1.55;
+        color: var(--ink-soft);
+        margin: 0 0 calc(var(--u) * 3);
+    }
+
+    &__form {
         display: flex;
         flex-direction: column;
+        gap: calc(var(--u) * 2.5);
+    }
 
-        gap: 0.5rem;
+    &__field {
+        display: flex;
+        flex-direction: column;
+    }
 
-        input{
-            border: none;
-            outline: none;
-            padding-inline: 1rem;
-            padding-block: 0.75rem;
-            border-radius: 0.75rem;
+    &__label {
+        @include theme.legend(0.72rem, 700);
+        color: var(--ink-soft);
+        margin-bottom: var(--u);
+    }
+
+    &__input {
+        width: 100%;
+        padding: calc(var(--u) * 1.75) calc(var(--u) * 2);
+        border: 1px solid rgba(18, 20, 15, 0.18);
+        border-radius: var(--radius);
+        background-color: rgba(15, 61, 46, 0.04);
+        color: var(--ink);
+        font-family: var(--face-prose);
+        font-size: 0.98rem;
+        outline: none;
+        transition: border-color var(--settle), box-shadow var(--settle);
+
+        &::placeholder { color: var(--ink-soft); opacity: 0.7; }
+        &:focus-visible { border-color: var(--cloth); box-shadow: 0 0 0 3px rgba(15, 61, 46, 0.18); }
+    }
+
+    &__submit {
+        width: 100%;
+        justify-content: center;
+        margin-top: var(--u);
+    }
+
+    &__fault {
+        font-size: 0.86rem;
+        line-height: 1.5;
+        color: #8C2A0C;
+        margin: 0;
+    }
+
+    &__switch {
+        margin-top: calc(var(--u) * 3);
+        padding-top: calc(var(--u) * 3);
+        border-top: 1px solid rgba(18, 20, 15, 0.14);
+        text-align: center;
+        font-size: 0.9rem;
+        color: var(--ink-soft);
+
+        a {
+            color: var(--cloth);
+            font-weight: 600;
+            text-decoration: none;
+
+            &:hover, &:focus-visible { text-decoration: underline; }
         }
     }
+}
 
-    a{
-        color: rgb(255, 0, 98);
-        text-decoration: none;
-    }
+@media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }

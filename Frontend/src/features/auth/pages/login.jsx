@@ -6,7 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 
 const login = () => {
 
-    const {loading, handleLogin} = useAuth()
+    const {loading, error, handleLogin} = useAuth()
     const navigate = useNavigate()
 
     const [email, setEmail] = useState("")
@@ -15,38 +15,53 @@ const login = () => {
 
     const handleSumbit = async  (e) =>{
         e.preventDefault()
-        await handleLogin({email, password})
-        navigate("/")
+        const user = await handleLogin({email, password})
+        if (user) navigate("/")
 
     }
 
     if(loading){
-        return (<main className='auth-page'><h1>Loading.......</h1></main>)
+        return (
+            <main className="depot depot--working">
+                <div className="blind" aria-live="polite">
+                    <p className="blind__rule">Checking your ticket</p>
+                    <p className="blind__course">SIGNING IN</p>
+                </div>
+            </main>
+        )
     }
 
   return (
-    <main className='auth-page'>
-        <div className="form-container">
-            <h1> Login </h1>
+    <main className="depot depot--gate">
+        <div className="ticket">
+            <div className="ticket__window">
+                <span className="blind__code">TIX 01</span>
+                <h1 className="ticket__course">WELCOME BACK</h1>
+            </div>
+            <p className="ticket__note">Sign in to reach your saved reports.</p>
 
-            <form onSubmit={handleSumbit}>
-                <div className="input-group">
-                    <label htmlFor="email">Email</label>
-                    <input 
+            <form className="ticket__form" onSubmit={handleSumbit}>
+                <div className="ticket__field">
+                    <label className="ticket__label" htmlFor="email">Email</label>
+                    <input
+                        className="ticket__input"
                         onChange={(e) => {setEmail(e.target.value)}}
-                        type="email" id="email" name='email'  placeholder='Enter email address'/>
+                        type="email" id="email" name='email' placeholder='Enter email address' required/>
                 </div>
-                <div className="input-group">
-                    <label htmlFor="password">Password</label>
-                    <input 
+                <div className="ticket__field">
+                    <label className="ticket__label" htmlFor="password">Password</label>
+                    <input
+                        className="ticket__input"
                         onChange={(e) => {setPassword(e.target.value)}}
-                        type="password" id="password" name='password'  placeholder='password'/>
+                        type="password" id="password" name='password' placeholder='Password' required/>
                 </div>
 
-                <button className='button primary-button'>Login</button>
+                {error && <p className="ticket__fault" role="alert">{error}</p>}
+
+                <button type="submit" className="act act--lead ticket__submit">Sign in</button>
             </form>
 
-            <p>Don't have an account? <Link to={"/register"}>Register</Link></p>
+            <p className="ticket__switch">Don't have an account? <Link to={"/register"}>Register</Link></p>
         </div>
     </main>
   )

@@ -87,6 +87,8 @@
     &__pct { font-size: 0.45em; margin-left: 2px; }
 
     &__act { margin-left: auto; }
+    /* Sits beside the lead action, not pushed by its own auto-margin too. */
+    &__act--latex { margin-left: 0; }
 
     &__working {
         @include theme.legend(0.78rem, 600);

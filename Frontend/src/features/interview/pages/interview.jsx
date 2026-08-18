@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react'
 import "../style/interview.scss"
 import { useInterview } from "../hooks/useInterview"
-import { Link } from "react-router"
+import { Link, useParams } from "react-router"
 import { snapStep, stepRank, invertIn, countUp, riffle } from "../../../lib/animations/blind"
-import { DownloadIcon, ChevronRightIcon } from "../components/icons.jsx"
+import { DownloadIcon, CodeIcon, ChevronRightIcon } from "../components/icons.jsx"
 
 /**
  * Report detail page at /interview/:interviewId, in the Depot Blind world.
@@ -79,13 +79,21 @@ const Roadmap = ({ plan, listRef }) => {
 const Interview = () => {
     const [activeSection, setActiveSection] = useState("technical")
     const [resumeError, setResumeError] = useState(null)
-    const { report, loading, error, downloadResume, downloadingResume } = useInterview()
+    const [resumeLatexError, setResumeLatexError] = useState(null)
+    const {
+        report, loading, error, getReportById,
+        downloadResume, downloadingResume,
+        downloadResumeLatex, downloadingResumeLatex,
+    } = useInterview()
+    const { interviewId } = useParams()
 
     const windowRef = useRef(null)
     const scoreRef = useRef(null)
     const scorePanelRef = useRef(null)
     const listRef = useRef(null)
     const riffleRef = useRef(null)
+    const latexRiffleRef = useRef(null)
+    const fetchRiffleRef = useRef(null)
 
     const technicalQuestion = report?.technicalQuestion ?? []
     const behavioralQuestion = report?.behavioralQuestion ?? []
@@ -123,6 +131,20 @@ const Interview = () => {
         return () => tl?.kill()
     }, [downloadingResume])
 
+    useEffect(() => {
+        if (!downloadingResumeLatex) return
+        const tl = riffle(latexRiffleRef.current, WORKING_COURSES)
+        return () => tl?.kill()
+    }, [downloadingResumeLatex])
+
+    // The report fetch riffles through the same working courses as the
+    // resume print, so the wait reads as one mechanism rather than two.
+    useEffect(() => {
+        if (!loading) return
+        const tl = riffle(fetchRiffleRef.current, WORKING_COURSES)
+        return () => tl?.kill()
+    }, [loading])
+
     const handleDownloadResume = async () => {
         setResumeError(null)
         try {
@@ -132,12 +154,22 @@ const Interview = () => {
         }
     }
 
+    const handleDownloadResumeLatex = async () => {
+        setResumeLatexError(null)
+        try {
+            await downloadResumeLatex(report._id)
+        } catch (err) {
+            setResumeLatexError(err.message || "The LaTeX source could not be printed. Try again.")
+        }
+    }
+
     if (loading) {
         return (
             <main className="depot depot--working">
                 <div className="blind" aria-live="polite">
                     <p className="blind__rule">Fetching report</p>
-                    <p className="blind__course">READING REPORT</p>
+                    <p className="blind__course" ref={fetchRiffleRef}>READING REPORT</p>
+                    <p className="blind__note">Pulling your saved report from the depot.</p>
                 </div>
             </main>
         )
@@ -150,7 +182,10 @@ const Interview = () => {
                     <p className="blind__rule">Service fault</p>
                     <p className="blind__course">NOT ON THE ROLL</p>
                     <p className="blind__note">{error || "This report could not be found."}</p>
-                    <Link className="act" to="/">Back to the depot</Link>
+                    <div className="blind__actions">
+                        <button className="act" onClick={() => getReportById(interviewId)}>Try again</button>
+                        <Link className="act act--quiet" to="/">Back to the depot</Link>
+                    </div>
                 </div>
             </main>
         )
@@ -190,11 +225,26 @@ const Interview = () => {
                     <DownloadIcon />
                     {downloadingResume ? "Printing…" : "Print tailored resume"}
                 </button>
+                <button
+                    className="act act--quiet score__act score__act--latex"
+                    onClick={handleDownloadResumeLatex}
+                    disabled={downloadingResumeLatex}
+                    aria-describedby={resumeLatexError ? "resume-latex-fault" : undefined}
+                >
+                    <CodeIcon />
+                    {downloadingResumeLatex ? "Printing…" : "Download LaTeX source"}
+                </button>
                 {downloadingResume && (
                     <p className="score__working" ref={riffleRef} aria-live="polite">READING REPORT</p>
                 )}
+                {downloadingResumeLatex && (
+                    <p className="score__working" ref={latexRiffleRef} aria-live="polite">READING REPORT</p>
+                )}
                 {resumeError && (
                     <p id="resume-fault" className="score__fault" role="alert">{resumeError}</p>
+                )}
+                {resumeLatexError && (
+                    <p id="resume-latex-fault" className="score__fault" role="alert">{resumeLatexError}</p>
                 )}
             </section>
 

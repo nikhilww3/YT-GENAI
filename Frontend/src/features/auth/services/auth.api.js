@@ -11,36 +11,26 @@ const api = axios.create({
 
 export async function register({username, email, password}){
 
-    try{
-        /* this code help to interact with backend to frontend */
-        const response = await api.post('/api/auth/register',{
-            username, email, password
-        })
+    /* this code help to interact with backend to frontend */
+    // Errors intentionally propagate here (unlike login/logout below) — the
+    // caller (useAuth) needs the real backend message (e.g. "Account already
+    // exists") to show the user, not a silently-undefined response.
+    const response = await api.post('/api/auth/register',{
+        username, email, password
+    })
 
-        return response.data
-
-    } catch (err){
-
-        console.log(err);
-
-    }
+    return response.data
 }
 
 export async function login({email, password}){
 
-    try{
+    // Same reasoning as register above: let the caller see the real error
+    // (e.g. "Invalid email or password") instead of swallowing it here.
+    const response = await api.post("/api/auth/login",{
+        email, password
+    })
 
-        const response = await api.post("/api/auth/login",{
-            email, password
-        })
-
-        return response.data
-
-    }catch (err){
-
-        console.log(err)
-
-    }
+    return response.data
 }
 
 export async function logout(){

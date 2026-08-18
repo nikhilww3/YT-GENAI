@@ -1,4 +1,4 @@
-import {getAllInterviewReports, generateInterviewReport, getInterviewReportById, fetchTailoredResume} from "../services/interview.api"
+import {getAllInterviewReports, generateInterviewReport, getInterviewReportById, fetchTailoredResume, fetchTailoredResumeLatex} from "../services/interview.api"
 import {useCallback, useContext, useEffect, useState } from "react"
 import { InterviewContext } from "../interview.context"
 import { useParams } from "react-router"
@@ -22,6 +22,10 @@ export const useInterview = () => {
     // takeover, but a resume download is a single button's own spinner and
     // shouldn't block the rest of the report from being visible/usable.
     const [downloadingResume, setDownloadingResume] = useState(false)
+    // Separate again from both `loading` and `downloadingResume` — downloading
+    // the LaTeX source is its own button with its own spinner, independent of
+    // whether a PDF download happens to be in flight at the same time.
+    const [downloadingResumeLatex, setDownloadingResumeLatex] = useState(false)
     // Page-level failure (e.g. the report list couldn't load) — rendered as a
     // full error screen with a retry, distinct from generationSummary below
     // which reports the outcome of one generation attempt.
@@ -124,6 +128,19 @@ export const useInterview = () => {
         }
     }, [])
 
+    const downloadResumeLatex = useCallback(async (id) => {
+        setDownloadingResumeLatex(true)
+        try {
+            const { blob, filename } = await fetchTailoredResumeLatex(id)
+            downloadBlob(blob, filename)
+        } catch (err) {
+            console.error("Error downloading tailored resume LaTeX source:", err)
+            throw err
+        } finally {
+            setDownloadingResumeLatex(false)
+        }
+    }, [])
+
     // Only the detail page auto-fetches here — Home calls fetchReports()
     // itself, so auto-fetching the list too would double-request on mount.
     useEffect(() => {
@@ -144,7 +161,9 @@ export const useInterview = () => {
         getReportById,
         fetchReports,
         downloadResume,
-        downloadingResume
+        downloadingResume,
+        downloadResumeLatex,
+        downloadingResumeLatex
     }
 
 }

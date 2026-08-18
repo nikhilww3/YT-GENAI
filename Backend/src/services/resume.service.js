@@ -4,6 +4,7 @@ const fs = require("fs/promises")
 const fsSync = require("fs")
 const os = require("os")
 const path = require("path")
+const crypto = require("crypto")
 const { execFile } = require("child_process")
 const Handlebars = require("handlebars")
 const { deepEscapeLatex } = require("../utils/latexEscape")
@@ -197,4 +198,60 @@ function isValidTailoredResume(content) {
     return tailoredResumeSchema.safeParse(content).success
 }
 
-module.exports = { generateTailoredResumeContent, renderResumeTemplate, compileLatexToPdf, isValidTailoredResume }
+// In-memory only, deliberately — same rationale as the "never touches server
+// disk or the database with the compiled PDF" comment on the controller.
+// Keyed by interviewId, with a content hash so a regenerated tailoredResume
+// (e.g. after a schema change invalidates the old one) can't serve a stale
+// compile. Lost on restart, which is fine: worst case is one recompile.
+//
+// Bounded LRU, not a plain unbounded Map: without a cap this grows forever
+// as distinct reports get downloaded across the process's lifetime, each
+// holding a full PDF Buffer — a slow memory leak in a long-lived server.
+// Map preserves insertion order, so re-inserting on every touch (get or set)
+// keeps the least-recently-used entry at the front for O(1) eviction.
+const MAX_CACHED_PDFS = 50
+const compiledPdfCache = new Map() // interviewId -> { hash, buffer }
+const inFlightPdfCompiles = new Map() // interviewId -> Promise<Buffer>
+
+function touchCachedPdf(interviewId, entry) {
+    compiledPdfCache.delete(interviewId)
+    compiledPdfCache.set(interviewId, entry)
+    if (compiledPdfCache.size > MAX_CACHED_PDFS) {
+        const oldestKey = compiledPdfCache.keys().next().value
+        compiledPdfCache.delete(oldestKey)
+    }
+}
+
+/**
+ * Compiles texSource to a PDF, reusing a cached buffer when this exact report
+ * was already compiled from this exact content. Without this, every single
+ * download re-ran the full Tectonic process spawn + typeset even when
+ * nothing about the resume had changed since the last download.
+ */
+async function getOrCompileTailoredResumePdf(interviewId, texSource) {
+    const hash = crypto.createHash("sha1").update(texSource).digest("hex")
+
+    const cached = compiledPdfCache.get(interviewId)
+    if (cached && cached.hash === hash) {
+        touchCachedPdf(interviewId, cached)
+        return cached.buffer
+    }
+
+    if (!inFlightPdfCompiles.has(interviewId)) {
+        const compilation = compileLatexToPdf(texSource).then((buffer) => {
+            touchCachedPdf(interviewId, { hash, buffer })
+            return buffer
+        })
+
+        // Same not-.finally() reasoning as inFlightResumeGenerations above: a
+        // bare .finally() here would produce an unhandled rejection on
+        // compile failure even though the controller already catches it.
+        const cleanup = () => inFlightPdfCompiles.delete(interviewId)
+        compilation.then(cleanup, cleanup)
+        inFlightPdfCompiles.set(interviewId, compilation)
+    }
+
+    return inFlightPdfCompiles.get(interviewId)
+}
+
+module.exports = { generateTailoredResumeContent, renderResumeTemplate, compileLatexToPdf, getOrCompileTailoredResumePdf, isValidTailoredResume }
