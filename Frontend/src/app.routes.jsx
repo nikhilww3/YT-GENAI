@@ -4,6 +4,7 @@ import Register from "./features/auth/pages/Register";
 import Protected from "./features/auth/components/protected";
 import Home from "../src/features/interview/pages/Home"
 import Interview from "./features/interview/pages/interview";
+import ResumeWorkbench from "./features/interview/pages/ResumeWorkbench";
 
 
 
@@ -15,12 +16,16 @@ export const router = createBrowserRouter([
     {
         path: "/register",
         element: <Register/>
-    },{
+    },
+    {
         path: "/",
         // protected is ensure the user is login then it's show homepage
         element: <Protected><Home/></Protected>
     },{
         path:"/interview/:interviewId",
         element: <Protected><Interview/></Protected>
+    },{
+        path:"/interview/:interviewId/resume",
+        element: <Protected><ResumeWorkbench/></Protected>
     }
 ])

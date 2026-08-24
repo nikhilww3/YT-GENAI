@@ -169,7 +169,12 @@ const interviewReportSchema = new mongoose.Schema({
     },
     provider: {
         type: String,
-        enum: ["gemini", "nvidia", "huggingface"],
+        /* Must stay in step with the PROVIDERS registry in services/ai.service.js.
+           These are two separate lists that both have to know about a provider,
+           and only this one is checked at save time — so adding a provider to the
+           registry alone lets generation succeed and then fails on the write,
+           which surfaces as a working model that "isn't valid". */
+        enum: ["gemini", "openai", "nvidia", "huggingface"],
         default: "gemini"
     },
     technicalQuestion: [technicalQuestionSchema],
@@ -177,6 +182,19 @@ const interviewReportSchema = new mongoose.Schema({
     skillGap: [skillGapSchema],
     preparationPlan: [preparationPlanSchema],
     tailoredResume: tailoredResumeSchema,
+    /* The user's edited working copy, kept beside the generated original rather
+       than overwriting it. Two reasons: someone who applies a run of suggestions
+       and dislikes the result must always be able to get back to what the model
+       produced, and the original is the thing the report's stored matchScore was
+       measured against. Absent until the first edit — absence means "unedited",
+       and every read falls back to tailoredResume. */
+    resumeDraft: tailoredResumeSchema,
+    /* Hand-edited LaTeX. Once this exists it is authoritative and the structured
+       content is no longer rendered — the user has taken the document over, and
+       silently re-deriving it from JSON would throw their edits away. The JSON is
+       still kept beside it as the way back. Only ever set from source that passed
+       assertSafeLatex and actually compiled. */
+    resumeTex: { type: String },
     user:{
         type:mongoose.Schema.Types.ObjectId,
         ref:"users"

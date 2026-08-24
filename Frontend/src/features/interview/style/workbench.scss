@@ -1,0 +1,625 @@
+@use "./theme" as theme;
+
+/* Depot Destination Blind — the resume workbench.
+   The bench where the printed resume is inspected before it travels. Same cloth,
+   same legends; the parser's view is a raw tape read off the machine. */
+
+.bench {
+    @include theme.app-theme;
+
+    min-height: 100vh;
+    width: 100%;
+    background-color: var(--cloth);
+    @include theme.weave;
+
+    color: var(--calico);
+    font-family: var(--face-prose);
+
+    display: flex;
+    flex-direction: column;
+    gap: var(--void);
+    padding: var(--void-lg) clamp(1rem, 4vw, 3rem);
+    align-items: center;
+
+    ::selection { background: var(--legend); color: var(--ink); }
+
+    &--working,
+    &--fault { justify-content: center; }
+
+    &__head {
+        width: min(72rem, 100%);
+    }
+
+    /* Back to the report the resume was printed from. A legend, not a button —
+       it leaves the bench rather than acting on it. */
+    &__back {
+        @include theme.legend(0.75rem, 600);
+        display: inline-flex;
+        align-items: center;
+        gap: calc(var(--u) * 0.75);
+        margin-bottom: calc(var(--u) * 2);
+        color: var(--calico);
+        opacity: 0.7;
+        text-decoration: none;
+
+        &:hover, &:focus-visible { opacity: 1; color: var(--legend); }
+    }
+
+    &__panel {
+        width: min(72rem, 100%);
+    }
+}
+
+/* ---------- The split: printed beside source ---------- */
+
+.split {
+    width: min(72rem, 100%);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--void);
+    align-items: stretch;
+
+    &__pane { display: flex; flex-direction: column; gap: calc(var(--u) * 2); min-width: 0; }
+
+    &__legend {
+        @include theme.legend(0.78rem, 700);
+        color: var(--legend);
+        margin: 0;
+        padding-bottom: var(--u);
+        border-bottom: var(--seam);
+    }
+
+    &__working, &__fault { margin: 0; font-size: 0.9rem; opacity: 0.7; }
+    &__fault { color: var(--sev-high); opacity: 1; }
+
+    /* Paper prints white whatever the cloth around it — a resume preview that
+       inherited the dark ground would misrepresent the thing being printed. */
+    &__paper {
+        width: 100%;
+        height: 40rem;
+        border: var(--stitch);
+        border-radius: var(--radius);
+        background-color: #fff;
+    }
+
+    &__source {
+        margin: 0;
+        height: 40rem;
+        padding: calc(var(--u) * 2);
+        border: var(--stitch);
+        border-radius: var(--radius);
+        background-color: rgba(18, 20, 15, 0.4);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.72rem;
+        line-height: 1.6;
+        color: var(--calico);
+        /* Source scrolls inside its own pane; the page itself must never scroll
+           sideways because a long \newcommand ran off the edge. */
+        overflow: auto;
+        white-space: pre;
+    }
+
+    &__stale {
+        @include theme.legend(0.62rem, 700);
+        margin-left: var(--u);
+        padding: 1px calc(var(--u) * 0.75);
+        background-color: var(--sev-med);
+        color: var(--ink);
+    }
+
+    &__mode {
+        @include theme.legend(0.66rem, 600);
+        margin-left: auto;
+        padding: 0;
+        border: none;
+        background: none;
+        color: var(--legend);
+        cursor: pointer;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+    }
+
+    &__legend { display: flex; align-items: baseline; gap: var(--u); }
+
+    /* CodeMirror brings its own layout; it is given a fixed frame matching the
+       preview beside it so the two panes stay the same height. */
+    &__editor {
+        border: var(--stitch);
+        border-radius: var(--radius);
+        overflow: hidden;
+
+        .cm-editor { height: 34rem; background-color: rgba(18, 20, 15, 0.4); }
+        .cm-editor.cm-focused { outline: 2px solid var(--legend); }
+        .cm-scroller { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.75rem; }
+        .cm-gutters {
+            background-color: rgba(18, 20, 15, 0.6);
+            border-right: var(--seam);
+            color: var(--calico);
+        }
+        .cm-content, .cm-line { color: var(--calico); }
+        .cm-cursor { border-left-color: var(--legend); }
+        .cm-activeLine { background-color: rgba(237, 232, 220, 0.04); }
+        .cm-activeLineGutter { background-color: rgba(237, 232, 220, 0.06); }
+
+        /* The failing line, dyed rather than outlined — same grammar the struck
+           line uses in the read-only view. */
+        .cm-errorLine { background-color: rgba(224, 82, 31, 0.28); }
+    }
+
+    &__acts { display: flex; gap: var(--u); flex-wrap: wrap; }
+
+    &__error {
+        margin: 0;
+        padding: calc(var(--u) * 1.5) calc(var(--u) * 2);
+        border-left: 3px solid var(--sev-high);
+        background-color: rgba(224, 82, 31, 0.08);
+        color: var(--calico);
+        font-size: 0.88rem;
+        line-height: 1.5;
+
+        strong { color: var(--sev-high); }
+    }
+
+    &__line { display: block; padding: 0 calc(var(--u) * 0.5); }
+
+    /* The struck line: the blind's own inversion, so the anchor reads as part of
+       the machine rather than as a browser find-in-page highlight. */
+    &__line.is-struck {
+        background-color: var(--legend);
+        color: var(--ink);
+    }
+
+    @media (max-width: 60rem) {
+        grid-template-columns: 1fr;
+
+        &__paper, &__source { height: 26rem; }
+    }
+}
+
+/* ---------- Edited-state slip ---------- */
+
+.edited {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: calc(var(--u) * 2);
+    margin-top: calc(var(--u) * 3);
+    padding: calc(var(--u) * 2);
+    border: 1px solid var(--legend);
+    border-left: 4px solid var(--legend);
+    background: rgba(245, 197, 24, 0.07);
+
+    &__mark {
+        @include theme.legend(0.68rem, 700);
+        flex-shrink: 0;
+        padding: calc(var(--u) * 0.5) var(--u);
+        background-color: var(--legend);
+        color: var(--ink);
+    }
+
+    &__note { flex: 1; min-width: 16rem; font-size: 0.88rem; line-height: 1.5; opacity: 0.8; }
+
+    &__acts { display: flex; gap: var(--u); flex-wrap: wrap; }
+
+    &__fault {
+        margin: calc(var(--u) * 2) 0 0;
+        color: var(--sev-high);
+        font-size: 0.9rem;
+    }
+}
+
+/* ---------- The reading: the posting against the resume ---------- */
+
+.reading {
+    width: min(72rem, 100%);
+
+    &__rule {
+        @include theme.legend(0.85rem, 700);
+        color: var(--legend);
+        padding-bottom: calc(var(--u) * 2);
+        border-bottom: var(--seam);
+        margin: 0;
+    }
+
+    &__working, &__fault {
+        margin: calc(var(--u) * 3) 0 0;
+        font-size: 0.92rem;
+        opacity: 0.75;
+    }
+
+    &__fault { color: var(--sev-high); opacity: 1; }
+
+    &__again {
+        @include theme.legend(0.7rem, 700);
+        margin-left: var(--u);
+        padding: 0;
+        border: none;
+        background: none;
+        color: var(--legend);
+        cursor: pointer;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+    }
+
+    /* Type at matter scale, as the report's own score prints. */
+    &__score {
+        display: flex;
+        align-items: baseline;
+        gap: var(--u);
+        margin: calc(var(--u) * 3) 0 0;
+    }
+
+    &__value {
+        @include theme.legend(clamp(2.5rem, 7vw, 4rem), 700);
+        color: var(--legend);
+        font-variant-numeric: tabular-nums;
+    }
+
+    &__pct { @include theme.legend(1.1rem, 700); color: var(--legend); }
+
+    /* The original never moves; this only ever reports the movement. */
+    &__delta {
+        @include theme.legend(0.72rem, 600);
+        margin-left: calc(var(--u) * 2);
+        opacity: 0.6;
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+.wants {
+    margin-top: var(--void);
+
+    &__legend {
+        @include theme.legend(0.78rem, 700);
+        display: flex;
+        align-items: baseline;
+        gap: var(--u);
+        margin: 0;
+        color: var(--calico);
+    }
+
+    &__count {
+        padding: 1px calc(var(--u) * 0.75);
+        background-color: var(--sev-med);
+        color: var(--ink);
+        font-variant-numeric: tabular-nums;
+    }
+
+    &--missing &__count { background-color: var(--sev-high); color: var(--calico); }
+    &--evidenced &__count { background-color: var(--sev-low); color: var(--ink); }
+
+    &__note {
+        margin: var(--u) 0 0;
+        max-width: 62ch;
+        font-size: 0.88rem;
+        line-height: 1.55;
+        opacity: 0.6;
+    }
+
+    &__rank {
+        list-style: none;
+        margin: calc(var(--u) * 2) 0 0;
+        padding: 0;
+    }
+}
+
+.want {
+    display: flex;
+    align-items: baseline;
+    gap: calc(var(--u) * 3);
+    padding: calc(var(--u) * 1.5) var(--u);
+    border-bottom: var(--seam);
+
+    &__term {
+        @include theme.legend(0.8rem, 600);
+        flex-shrink: 0;
+        min-width: 12rem;
+        color: var(--calico);
+    }
+
+    &__note { font-size: 0.88rem; line-height: 1.5; opacity: 0.65; }
+
+    @media (max-width: 48rem) {
+        flex-direction: column;
+        gap: calc(var(--u) * 0.75);
+
+        &__term { min-width: 0; }
+    }
+}
+
+/* ---------- The work: proposed bullets ---------- */
+
+.work {
+    width: min(72rem, 100%);
+
+    &__rule {
+        @include theme.legend(0.85rem, 700);
+        color: var(--legend);
+        padding-bottom: calc(var(--u) * 2);
+        border-bottom: var(--seam);
+        margin: 0;
+    }
+
+    &__note {
+        margin: calc(var(--u) * 2) 0 0;
+        max-width: 62ch;
+        font-size: 0.9rem;
+        line-height: 1.6;
+        opacity: 0.65;
+
+        code {
+            padding: 0 4px;
+            background-color: rgba(245, 197, 24, 0.15);
+            color: var(--legend);
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        }
+    }
+
+    &__rank { list-style: none; margin: calc(var(--u) * 2) 0 0; padding: 0; }
+}
+
+.fix {
+    padding: calc(var(--u) * 3) var(--u);
+    border-bottom: var(--seam);
+
+    &__legend {
+        display: flex;
+        align-items: baseline;
+        flex-wrap: wrap;
+        gap: calc(var(--u) * 1.5);
+        margin: 0 0 calc(var(--u) * 2);
+    }
+
+    &__kind {
+        @include theme.legend(0.65rem, 700);
+        padding: 2px calc(var(--u) * 0.75);
+        background-color: var(--legend);
+        color: var(--ink);
+    }
+
+    &__for {
+        @include theme.legend(0.68rem, 600);
+        color: var(--legend);
+        opacity: 0.85;
+    }
+
+    /* Marked, not hidden: a bullet with an unfilled blank is not ready to use,
+       and that has to be visible before it is read as finished text. */
+    &__blank {
+        @include theme.legend(0.65rem, 700);
+        padding: 2px calc(var(--u) * 0.75);
+        border: 1px solid var(--sev-med);
+        color: var(--sev-med);
+    }
+
+    /* The old line, struck: the change is the point, so both states are shown. */
+    &__was {
+        margin: 0 0 var(--u);
+        font-size: 0.9rem;
+        line-height: 1.55;
+        opacity: 0.45;
+        text-decoration: line-through;
+    }
+
+    &__now {
+        margin: 0;
+        font-size: 0.98rem;
+        line-height: 1.6;
+        color: var(--calico);
+    }
+
+    &__why {
+        margin: calc(var(--u) * 1.5) 0 0;
+        font-size: 0.85rem;
+        line-height: 1.5;
+        opacity: 0.6;
+    }
+
+    /* Editable because it carries a blank. Styled as the same calico panel the
+       home bench uses for prose, so it reads as a field to complete rather than
+       as finished output. */
+    &__edit {
+        width: 100%;
+        min-height: 5rem;
+        padding: calc(var(--u) * 2);
+        border: none;
+        border-radius: var(--radius);
+        @include theme.calico-weave;
+        color: var(--ink);
+        font-family: var(--face-prose);
+        font-size: 0.95rem;
+        line-height: 1.6;
+        resize: vertical;
+        outline: none;
+
+        &:focus-visible { box-shadow: 0 0 0 3px var(--legend); }
+    }
+
+    &__acts {
+        display: flex;
+        align-items: center;
+        gap: calc(var(--u) * 2);
+        margin-top: calc(var(--u) * 2);
+        flex-wrap: wrap;
+    }
+
+    &__apply { border: 1px solid var(--legend); padding: var(--u) calc(var(--u) * 2); }
+
+    &__hold {
+        @include theme.legend(0.65rem, 600);
+        color: var(--sev-med);
+    }
+
+    &__find {
+        @include theme.legend(0.68rem, 600);
+        padding: 0;
+        border: none;
+        background: none;
+        color: var(--calico);
+        opacity: 0.65;
+        cursor: pointer;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+
+        &:hover, &:focus-visible { opacity: 1; color: var(--legend); }
+    }
+}
+
+/* ---------- Gaps in the candidate, not the document ---------- */
+
+.honest {
+    width: min(72rem, 100%);
+
+    &__rule {
+        @include theme.legend(0.85rem, 700);
+        color: var(--sev-high);
+        padding-bottom: calc(var(--u) * 2);
+        border-bottom: var(--seam);
+        margin: 0;
+    }
+
+    &__note {
+        margin: calc(var(--u) * 2) 0 0;
+        max-width: 62ch;
+        font-size: 0.9rem;
+        line-height: 1.6;
+        opacity: 0.65;
+    }
+
+    &__rank { list-style: none; margin: calc(var(--u) * 2) 0 0; padding: 0; }
+
+    &__item {
+        display: flex;
+        align-items: baseline;
+        gap: calc(var(--u) * 3);
+        padding: calc(var(--u) * 1.5) var(--u);
+        border-bottom: var(--seam);
+    }
+
+    &__term {
+        @include theme.legend(0.8rem, 600);
+        flex-shrink: 0;
+        min-width: 12rem;
+        color: var(--sev-high);
+    }
+
+    &__body { font-size: 0.88rem; line-height: 1.5; opacity: 0.65; }
+
+    @media (max-width: 48rem) {
+        &__item { flex-direction: column; gap: calc(var(--u) * 0.75); }
+        &__term { min-width: 0; }
+    }
+}
+
+/* ---------- The inspection slip ---------- */
+
+.inspect {
+    width: min(72rem, 100%);
+
+    &__rule {
+        @include theme.legend(0.85rem, 700);
+        color: var(--legend);
+        padding-bottom: calc(var(--u) * 2);
+        border-bottom: var(--seam);
+        margin: 0;
+    }
+
+    &__rank { list-style: none; margin: 0; padding: 0; }
+
+    /* Identical ruled furniture on every line, so the rank scans in one pass —
+       the same grammar the saved-report list uses on the home bench. */
+    &__item {
+        display: flex;
+        align-items: flex-start;
+        gap: calc(var(--u) * 3);
+        padding: calc(var(--u) * 2.5) var(--u);
+        border-bottom: var(--seam);
+    }
+
+    /* Severity is dyed into the stamp itself, never a slab down one edge. */
+    &__mark {
+        @include theme.legend(0.68rem, 700);
+        flex-shrink: 0;
+        min-width: 4.5rem;
+        padding: calc(var(--u) * 0.5) var(--u);
+        text-align: center;
+        color: var(--ink);
+        background-color: var(--sev-low);
+    }
+
+    &__item--warn &__mark { background-color: var(--sev-med); }
+    &__item--fail &__mark { background-color: var(--sev-high); color: var(--calico); }
+
+    &__body { display: flex; flex-direction: column; gap: calc(var(--u) * 0.75); }
+
+    &__legend {
+        @include theme.legend(0.8rem, 600);
+        color: var(--calico);
+    }
+
+    &__note {
+        font-size: 0.9rem;
+        line-height: 1.55;
+        opacity: 0.72;
+    }
+
+    @media (max-width: 48rem) {
+        &__item { flex-direction: column; gap: calc(var(--u) * 1.5); }
+    }
+}
+
+/* ---------- The parser's tape ---------- */
+
+.tape-read {
+    width: min(72rem, 100%);
+
+    &__rule {
+        @include theme.legend(0.85rem, 700);
+        color: var(--legend);
+        padding-bottom: calc(var(--u) * 2);
+        border-bottom: var(--seam);
+        margin: 0;
+    }
+
+    &__note {
+        margin: calc(var(--u) * 2) 0 0;
+        max-width: 62ch;
+        font-size: 0.92rem;
+        line-height: 1.6;
+        opacity: 0.7;
+    }
+
+    &__toggle {
+        @include theme.legend(0.72rem, 700);
+        margin-top: calc(var(--u) * 2);
+        padding: calc(var(--u) * 1) calc(var(--u) * 2);
+        border: 1px solid var(--legend);
+        border-radius: var(--radius);
+        background: transparent;
+        color: var(--legend);
+        cursor: pointer;
+        transition: background-color var(--settle), color var(--settle);
+
+        &:hover { background-color: var(--legend); color: var(--ink); }
+        &:focus-visible { outline: 2px solid var(--calico); outline-offset: 2px; }
+    }
+
+    /* The raw stream, monospaced and unstyled on purpose: this is meant to look
+       like machine output, not like a document. Preserves the parser's own line
+       breaks, which is the whole point of showing it. */
+    &__stream {
+        margin-top: calc(var(--u) * 2);
+        padding: calc(var(--u) * 3);
+        border: var(--stitch);
+        border-radius: var(--radius);
+        background-color: rgba(18, 20, 15, 0.4);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.82rem;
+        line-height: 1.7;
+        white-space: pre-wrap;
+        word-break: break-word;
+        max-height: 32rem;
+        overflow-y: auto;
+        color: var(--calico);
+    }
+}

@@ -25,6 +25,14 @@
         overflow: hidden;
     }
 
+    &__topline {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--u);
+        margin-bottom: calc(var(--u) * 2);
+    }
+
     &__back {
         @include theme.legend(0.8rem, 600);
         display: inline-flex;
@@ -33,7 +41,6 @@
         color: var(--calico);
         opacity: 0.75;
         text-decoration: none;
-        margin-bottom: calc(var(--u) * 2);
 
         &:hover, &:focus-visible { opacity: 1; color: var(--legend); }
     }

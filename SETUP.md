@@ -26,7 +26,7 @@ npm -v
 ```
 YT-GENAI/
 ├── Backend/     # Express API (port 3000)
-├── Frontend/    # React + Vite app (port 5173)
+├── Frontend/    # React + Vite app (port 8080)
 └── SETUP.md     # this file
 ```
 
@@ -135,7 +135,8 @@ cd Frontend
 npm run dev
 ```
 
-Open the URL Vite prints (usually `http://localhost:5173`).
+Open `http://localhost:8080` — the dev server port is pinned in `Frontend/vite.config.js`
+(`strictPort: true`), so Vite fails to start rather than quietly moving to another port.
 
 ---
 
@@ -143,7 +144,7 @@ Open the URL Vite prints (usually `http://localhost:5173`).
 
 | Service  | URL |
 |----------|-----|
-| Frontend | http://localhost:5173 |
+| Frontend | http://localhost:8080 |
 | Backend  | http://localhost:3000 |
 | Auth API | http://localhost:3000/api/auth |
 
@@ -183,11 +184,11 @@ Do this inside `Backend/` or `Frontend/` separately.
 
 ### CORS errors in browser
 
-Backend allows `http://localhost:5173` only. If Vite uses a different port, update `Backend/src/app.js`:
+Backend allows `http://localhost:8080` only. If Vite uses a different port, update `Backend/src/app.js`:
 
 ```js
 app.use(cors({
-    origin: "http://localhost:5173",  // match your Vite port
+    origin: "http://localhost:8080",  // match your Vite port
     credentials: true
 }))
 ```
@@ -196,7 +197,7 @@ app.use(cors({
 
 ```bash
 lsof -i :3000   # Backend
-lsof -i :5173   # Frontend
+lsof -i :8080   # Frontend
 kill <PID>
 ```
 
@@ -228,4 +229,4 @@ cd Frontend && npm run build
 - [ ] `npm run setup:tectonic` in `Backend/` (only needed for tailored-resume downloads)
 - [ ] MongoDB running (local or Atlas)
 - [ ] Backend on port 3000
-- [ ] Frontend on port 5173
+- [ ] Frontend on port 8080

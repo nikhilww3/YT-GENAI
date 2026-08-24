@@ -40,25 +40,44 @@
         gap: var(--u);
     }
 
-    &__links {
-        display: flex;
-        gap: calc(var(--u) * 4);
-
-        a {
-            @include theme.legend(0.8rem, 600);
-            color: var(--calico);
-            opacity: 0.75;
-            text-decoration: none;
-            text-underline-offset: 4px;
-
-            &:hover, &:focus-visible { opacity: 1; text-decoration: underline; color: var(--legend); }
-        }
+    /* Replaces the old dead-link nav: a quiet stamp on the counter, in the same
+       legend voice, carrying a true fact instead of three broken routes. */
+    &__stamp {
+        @include theme.legend(0.78rem, 600);
+        margin: 0;
+        color: var(--calico);
+        opacity: 0.6;
+        font-variant-numeric: tabular-nums;
     }
 
-    &__stamp {
-        @include theme.legend(0.8rem, 600);
-        color: var(--calico);
-        opacity: 0.82;
+}
+
+/* ---------- Brand lockup: the mark + wordmark, quiet, above the code line.
+   No `color` set on the word — it inherits from whichever root it sits in
+   (.depot/.report print calico on cloth, .ticket prints ink on calico), so
+   one lockup works correctly in both contexts. ---------- */
+
+.brandmark {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--u);
+    margin-bottom: calc(var(--u) * 2);
+    opacity: 0.85;
+
+    &__icon { flex-shrink: 0; }
+
+    &__word {
+        @include theme.legend(0.82rem, 700);
+        letter-spacing: 0.14em;
+    }
+
+    /* For placements beside other content (a footer stamp, a header topline)
+       rather than stacked above a window — no bottom gap, smaller mark, so
+       it reads as a quiet secondary signature, never a kicker. */
+    &--quiet {
+        margin-bottom: 0;
+
+        .brandmark__icon { width: 18px; height: 18px; }
     }
 }
 
@@ -154,8 +173,31 @@
     &__legend {
         @include theme.legend(0.82rem, 700);
         color: var(--legend);
+        display: flex;
+        align-items: baseline;
+        gap: calc(var(--u) * 1.5);
 
         &--sub { margin-top: calc(var(--u) * 2); }
+    }
+
+    /* Marks the two alternative sources. Deliberately not "optional" on both —
+       that reads as "skip these", when in fact one of them must be given. */
+    &__either {
+        @include theme.legend(0.68rem, 600);
+        padding: 2px calc(var(--u) * 0.75);
+        border: 1px solid rgba(245, 197, 24, 0.4);
+        border-radius: var(--radius);
+        color: var(--legend);
+        opacity: 0.75;
+        letter-spacing: 0.1em;
+    }
+
+    &__aside {
+        margin: 0;
+        font-size: 0.82rem;
+        line-height: 1.5;
+        color: var(--calico);
+        opacity: 0.55;
     }
 
     &__foot {
@@ -189,6 +231,33 @@
     }
 }
 
+/* The character gauge: silent until the tape runs short, then it marks itself. */
+.gauge {
+    margin: 0;
+    align-self: flex-end;
+    @include theme.legend(0.72rem, 600);
+    color: var(--calico);
+    opacity: 0.55;
+    font-variant-numeric: tabular-nums;
+    transition: color var(--settle), opacity var(--settle);
+
+    /* Nothing written yet — present but barely, so it never competes with the
+       placeholder for a field the user has not touched. */
+    &.is-idle { opacity: 0.28; }
+
+    /* The last tenth of the tape. Colour alone never carries this: the count
+       itself is the signal, and the spoken line below states it outright. */
+    &.is-short { color: var(--sev-high); opacity: 1; }
+
+    &__called {
+        position: absolute;
+        width: 1px; height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+}
+
 /* Cloth has no rounded corners; the drop zone is stitched, not rounded. */
 .drop {
     display: flex;
@@ -202,6 +271,22 @@
     transition: background-color var(--settle), border-color var(--settle);
 
     &:hover { background-color: rgba(237, 232, 220, 0.12); border-color: var(--legend); }
+
+    /* Papers held over the counter: the frame closes to a solid legend rule and
+       the ground lifts, so the target is unmistakable while dragging. */
+    &.is-taking {
+        border: 1px solid var(--legend);
+        background-color: rgba(245, 197, 24, 0.12);
+    }
+
+    /* Papers seated. The mark stays quiet — a check and a held frame, not a
+       colour flood — because a filled field is a resting state, not an alert. */
+    &.is-seated {
+        border-color: var(--legend);
+        background-color: rgba(245, 197, 24, 0.06);
+
+        .drop__text { opacity: 1; }
+    }
 
     &__icon { color: var(--legend); flex-shrink: 0; }
 
@@ -353,6 +438,22 @@
     }
 
     &__rank { list-style: none; margin: 0; padding: 0; }
+
+    /* An empty roll is still a roll: the rule and the seam hold their place, so
+       the first printed course drops into a frame the user has already seen
+       rather than a section appearing from nowhere. */
+    &--bare &__rule { opacity: 0.7; }
+
+    &__bare-note {
+        margin: 0;
+        padding: calc(var(--u) * 4) var(--u);
+        border-bottom: var(--seam);
+        max-width: 52ch;
+        font-size: 0.95rem;
+        line-height: 1.6;
+        color: var(--calico);
+        opacity: 0.6;
+    }
 }
 
 /* Identical ruled furniture on every course, so the rank scans in one pass. */
