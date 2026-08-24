@@ -16,7 +16,7 @@ const userSchema = new mongoose.Schema({
     password:{
         type: String,
         required: true,
-    }
+    },
 })
 
 // the model is a property of mongoose to stored the data of user in users floder with userSchema 

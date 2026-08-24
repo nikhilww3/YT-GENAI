@@ -17,6 +17,18 @@ const tailoredResumeLimiter = rateLimit({
     message: { message: "Too many resume requests, please try again in a few minutes" }
 })
 
+/* Deliberately separate from tailoredResumeLimiter. The workbench calls this on
+   open and on every change, so sharing that 10-per-5-minutes budget would let an
+   editing session lock the user out of downloading the resume they just improved. */
+const resumeWorkbenchLimiter = rateLimit({
+    windowMs: 5 * 60 * 1000,
+    limit: 30,
+    keyGenerator: (req) => req.user?.id || ipKeyGenerator(req.ip),
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: "Too many resume workbench requests, please try again in a few minutes" }
+})
+
 /**
  * @route POST /api/intervirew/
  * @description generate new interview report on the basis of user itself description, resume pdf and job description
@@ -49,6 +61,55 @@ interviewRouter.post("/report/:interviewId/resume", authMiddleware.authUser, tai
  * @access private
  */
 interviewRouter.post("/report/:interviewId/resume/latex", authMiddleware.authUser, tailoredResumeLimiter, interviewController.downloadTailoredResumeLatexController)
+
+/**
+ * @route POST /api/interview/report/:interviewId/resume/parser-view
+ * @description return the tailored resume's text layer as a PDF parser reads it
+ * @access private
+ */
+interviewRouter.post("/report/:interviewId/resume/parser-view", authMiddleware.authUser, resumeWorkbenchLimiter, interviewController.resumeParserViewController)
+
+/**
+ * @route POST /api/interview/report/:interviewId/resume/ats
+ * @description score the tailored resume against the posting and classify its priority keywords
+ * @access private
+ */
+interviewRouter.post("/report/:interviewId/resume/ats", authMiddleware.authUser, resumeWorkbenchLimiter, interviewController.resumeAtsAnalysisController)
+
+/**
+ * @route POST /api/interview/report/:interviewId/resume/preview
+ * @description stream the compiled resume inline for on-screen preview
+ * @access private
+ */
+interviewRouter.post("/report/:interviewId/resume/preview", authMiddleware.authUser, resumeWorkbenchLimiter, interviewController.resumePreviewController)
+
+/**
+ * @route POST /api/interview/report/:interviewId/resume/compile
+ * @description compile hand-edited LaTeX and, on success, adopt it as the source
+ * @access private
+ */
+interviewRouter.post("/report/:interviewId/resume/compile", authMiddleware.authUser, resumeWorkbenchLimiter, interviewController.compileResumeLatexController)
+
+/**
+ * @route DELETE /api/interview/report/:interviewId/resume/tex
+ * @description discard hand-edited LaTeX and render from structured content again
+ * @access private
+ */
+interviewRouter.delete("/report/:interviewId/resume/tex", authMiddleware.authUser, resumeWorkbenchLimiter, interviewController.discardResumeTexController)
+
+/**
+ * @route PUT /api/interview/report/:interviewId/resume/draft
+ * @description save the user's working copy of the tailored resume
+ * @access private
+ */
+interviewRouter.put("/report/:interviewId/resume/draft", authMiddleware.authUser, resumeWorkbenchLimiter, interviewController.saveResumeDraftController)
+
+/**
+ * @route DELETE /api/interview/report/:interviewId/resume/draft
+ * @description discard the working copy and return to the generated resume
+ * @access private
+ */
+interviewRouter.delete("/report/:interviewId/resume/draft", authMiddleware.authUser, resumeWorkbenchLimiter, interviewController.discardResumeDraftController)
 
 
 /**

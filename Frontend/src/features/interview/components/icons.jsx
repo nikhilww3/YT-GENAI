@@ -81,3 +81,41 @@ export const CodeIcon = ({ className }) => (
         <path d="m16 6 5 6-5 6" />
     </svg>
 )
+
+/* The ZeroFare mark: one split-flap character showing "0" — the same
+   flap-tile shape the riffle() animation (lib/animations/blind.js) simulates
+   turning over, just held still. Filled brand colors, not currentColor —
+   this is a fixed mark, not a UI icon that inherits surrounding text color.
+   Relies on --legend/--ink being in scope (true everywhere it's used: inside
+   .depot, .report, or .ticket, all of which include the app-theme mixin). */
+export const EyeIcon = ({ className }) => (
+    <svg {...baseProps} className={className} width="18" height="18">
+        <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" />
+        <circle cx="12" cy="12" r="3" />
+    </svg>
+)
+
+export const EyeOffIcon = ({ className }) => (
+    <svg {...baseProps} className={className} width="18" height="18">
+        <path d="M10.7 5.1A10.6 10.6 0 0 1 12 5c6.4 0 10 7 10 7a18.4 18.4 0 0 1-2.9 3.9M6.5 6.6A18.3 18.3 0 0 0 2 12s3.6 7 10 7a10.3 10.3 0 0 0 4.4-.95" />
+        <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+        <path d="m3 3 18 18" />
+    </svg>
+)
+
+export const ZeroFareMark = ({ className }) => (
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        className={className}
+        width="28"
+        height="28"
+        role="img"
+        aria-label="ZeroFare"
+    >
+        <rect x="1" y="1" width="22" height="22" rx="3" fill="var(--legend, #F5C518)" />
+        <rect x="7" y="5" width="10" height="14" rx="5" fill="var(--ink, #12140F)" />
+        <rect x="9.4" y="7.4" width="5.2" height="9.2" rx="2.6" fill="var(--legend, #F5C518)" />
+        <rect x="1" y="11.3" width="22" height="1.4" fill="var(--ink, #12140F)" opacity="0.45" />
+    </svg>
+)

@@ -38,10 +38,18 @@ const interviewReportSchema = z.object({
 })
 
 function buildPrompt({ resume, selfDescription, jobDescription }) {
+    /* The resume and the self description are alternatives — only one of the two
+       is required. Drop the absent one entirely instead of interpolating it as an
+       empty string or the literal "undefined", either of which the model reads as
+       a candidate with no history and scores down accordingly. */
+    const details = [
+        resume?.trim() && `Resume: ${resume.trim()}`,
+        selfDescription?.trim() && `Self Description: ${selfDescription.trim()}`,
+        `Job Description: ${jobDescription}`,
+    ].filter(Boolean)
+
     return `Generate an interview report for a candidate with the following details:
-                        Resume: ${resume}
-                        Self Description: ${selfDescription}
-                        Job Description: ${jobDescription}
+                        ${details.join("\n                        ")}
 `
 }
 
@@ -116,10 +124,26 @@ async function generateWithOpenAICompatible({ label, baseURL, apiKey, model }, p
     })
 }
 
+/* OpenAI's own endpoint is the native case for generateWithOpenAICompatible, so
+   baseURL is left off entirely and the SDK falls through to api.openai.com.
+   The model is env-overridable because OpenAI retires ids on its own schedule —
+   when gpt-5.6-luna is superseded, that should cost a line in .env, not a code
+   change and a redeploy. Luna is the default: cheapest of the 5.6 family
+   ($0.20/$1.20 per Mtok), and it supports the structured output this needs. */
+const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-5.6-luna"
+
 const PROVIDERS = {
     gemini: {
         label: "Gemini",
         generate: (prompt) => generateWithGemini(prompt)
+    },
+    openai: {
+        label: "ChatGPT",
+        generate: (prompt) => generateWithOpenAICompatible({
+            label: "ChatGPT",
+            apiKey: process.env.OPENAI_API_KEY,
+            model: OPENAI_MODEL
+        }, prompt)
     },
     nvidia: {
         label: "NVIDIA",
@@ -142,9 +166,9 @@ const PROVIDERS = {
 }
 
 /**
- * @description Generates an interview report using the given provider ("gemini" | "nvidia" |
- * "huggingface"). Defaults to Gemini to preserve existing behavior for any caller that doesn't
- * specify one.
+ * @description Generates an interview report using the given provider ("gemini" | "openai" |
+ * "nvidia" | "huggingface"). Defaults to Gemini to preserve existing behavior for any caller
+ * that doesn't specify one.
  */
 async function generateInterviewReport({ resume, selfDescription, jobDescription, provider = "gemini" }) {
     const providerConfig = PROVIDERS[provider]

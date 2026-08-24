@@ -10,7 +10,8 @@ app.use(express.json())
 app.use(cookieParser())
 // we use cors in middleware to handle cors error
 app.use(cors({
-    origin: "http://localhost:5173",
+    // must match the Vite dev server port pinned in Frontend/vite.config.js
+    origin: "http://localhost:8080",
     credentials: true
 }))
 

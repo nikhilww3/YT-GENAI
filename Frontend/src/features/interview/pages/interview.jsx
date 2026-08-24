@@ -3,7 +3,7 @@ import "../style/interview.scss"
 import { useInterview } from "../hooks/useInterview"
 import { Link, useParams } from "react-router"
 import { snapStep, stepRank, invertIn, countUp, riffle } from "../../../lib/animations/blind"
-import { DownloadIcon, CodeIcon, ChevronRightIcon } from "../components/icons.jsx"
+import { DownloadIcon, CodeIcon, ChevronRightIcon, EyeIcon, ZeroFareMark } from "../components/icons.jsx"
 
 /**
  * Report detail page at /interview/:interviewId, in the Depot Blind world.
@@ -200,9 +200,15 @@ const Interview = () => {
     return (
         <main className="report">
             <header className="report__head" ref={windowRef}>
-                <Link className="report__back" to="/">
-                    <ChevronRightIcon className="report__back-arrow" /> Depot
-                </Link>
+                <div className="report__topline">
+                    <Link className="report__back" to="/">
+                        <ChevronRightIcon className="report__back-arrow" /> Depot
+                    </Link>
+                    <div className="brandmark brandmark--quiet">
+                        <ZeroFareMark className="brandmark__icon" />
+                        <span className="brandmark__word">ZeroFare</span>
+                    </div>
+                </div>
                 <div className="blind__window">
                     <span className="blind__code">{(report.provider ?? "rep").slice(0, 3).toUpperCase()} {String(matchScore ?? 0).padStart(2, "0")}</span>
                     <h1 className="report__course">{report.title || "Untitled"}</h1>
@@ -234,6 +240,10 @@ const Interview = () => {
                     <CodeIcon />
                     {downloadingResumeLatex ? "Printing…" : "Download LaTeX source"}
                 </button>
+                <Link className="act act--quiet score__act" to={`/interview/${report._id}/resume`}>
+                    <EyeIcon />
+                    Check it against the posting
+                </Link>
                 {downloadingResume && (
                     <p className="score__working" ref={riffleRef} aria-live="polite">READING REPORT</p>
                 )}

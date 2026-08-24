@@ -69,8 +69,12 @@ tailored resume, provider.
 
 ## Brand Commitments
 
-Product name is **Interview Strategy Generator**, used consistently across the
-surface. No logo, wordmark, or brand assets exist yet.
+Product name is **ZeroFare** — free interview prep for the fare you can't pay. "Zero"
+states the mission (free for students who can't afford paid resume/interview tools),
+"fare" is the transit-depot vocabulary the whole surface already speaks (tickets,
+boarding, gates, destination codes). Used consistently across the surface. The mark is
+a single split-flap character showing "0" (chrome-yellow tile, ink glyph, a horizontal
+seam like a real split-flap board) — the site's own signature motion, held still.
 
 ## Evidence on Hand
 

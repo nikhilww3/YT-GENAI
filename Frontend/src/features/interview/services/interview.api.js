@@ -79,6 +79,100 @@ export const fetchTailoredResumeLatex = async (interviewId) => {
     return fetchTailoredResumeFile(`/api/interview/report/${interviewId}/resume/latex`, "Resume.tex")
 }
 
+/**
+ * @description Returns the tailored resume's text layer exactly as a PDF parser
+ * reads it — { name, text }. POST for the same reason as the downloads: the first
+ * call for a report can generate content and compile, so it isn't idempotent.
+ * Errors propagate so the workbench can show the real backend reason.
+ */
+export const fetchResumeParserView = async (interviewId) => {
+    const response = await api.post(`/api/interview/report/${interviewId}/resume/parser-view`)
+    return response.data
+}
+
+/**
+ * @description Scores the tailored resume against the report's job description and
+ * classifies the posting's priority requirements — { score, baseline, keywords }.
+ * `baseline` is the report's own stored matchScore and may be null; the live score
+ * is a preview and never replaces it.
+ */
+export const fetchResumeAtsAnalysis = async (interviewId) => {
+    const response = await api.post(`/api/interview/report/${interviewId}/resume/ats`)
+    return response.data
+}
+
+/**
+ * @description Fetches the compiled resume as a Blob for on-screen preview. The
+ * caller owns the object URL and must revoke it — see useResumePreview.
+ */
+export const fetchResumePreview = async (interviewId) => {
+    const response = await api.post(`/api/interview/report/${interviewId}/resume/preview`, null, {
+        responseType: "blob"
+    })
+    return response.data
+}
+
+/**
+ * @description Compiles hand-edited LaTeX. Resolves with a PDF Blob on success.
+ * On a compile failure the backend answers 422 with a located error, which is
+ * rethrown as { line, message } so the editor can mark the failing line.
+ */
+export const compileResumeLatex = async (interviewId, tex) => {
+    try {
+        const response = await api.post(
+            `/api/interview/report/${interviewId}/resume/compile`,
+            { tex },
+            { responseType: "blob" }
+        )
+        return response.data
+    } catch (error) {
+        // responseType "blob" applies to error bodies too, so the JSON the server
+        // sent arrives as a Blob and has to be read back out to be useful.
+        if (error.response?.data instanceof Blob) {
+            const text = await error.response.data.text()
+            try {
+                const body = JSON.parse(text)
+                throw Object.assign(new Error(body.message || "The document did not compile"), {
+                    latex: body.error ?? null,
+                    status: error.response.status,
+                })
+            } catch (parseError) {
+                if (parseError.latex !== undefined) throw parseError
+                // body wasn't JSON — fall through to the original error
+            }
+        }
+        throw error
+    }
+}
+
+/**
+ * @description Discards hand-edited LaTeX so the resume renders from its
+ * structured content again.
+ */
+export const discardResumeTex = async (interviewId) => {
+    const response = await api.delete(`/api/interview/report/${interviewId}/resume/tex`)
+    return response.data
+}
+
+/**
+ * @description Saves the whole working copy of the tailored resume. The full
+ * document is sent rather than a patch because apply, undo and redo are all just
+ * "the resume now looks like this", which keeps undo a plain stack of snapshots.
+ */
+export const saveResumeDraft = async (interviewId, content) => {
+    const response = await api.put(`/api/interview/report/${interviewId}/resume/draft`, { content })
+    return response.data
+}
+
+/**
+ * @description Discards the working copy, returning to the generated resume. The
+ * generated content is never overwritten, so this always has something to restore.
+ */
+export const discardResumeDraft = async (interviewId) => {
+    const response = await api.delete(`/api/interview/report/${interviewId}/resume/draft`)
+    return response.data
+}
+
 async function fetchTailoredResumeFile(url, defaultFilename) {
     let response
     try {

@@ -7,6 +7,7 @@ const path = require("path")
 const crypto = require("crypto")
 const { execFile } = require("child_process")
 const Handlebars = require("handlebars")
+const { PDFParse } = require("pdf-parse")
 const { deepEscapeLatex } = require("../utils/latexEscape")
 const { sleep, MAX_ATTEMPTS, RETRY_BASE_DELAY_MS, TRANSIENT_STATUS_CODES, isTransientGeminiError, withRetry } = require("../utils/retryUtils")
 
@@ -170,11 +171,23 @@ async function compileLatexToPdf(texSource) {
         await new Promise((resolve, reject) => {
             execFile(
                 TECTONIC_PATH,
-                [texPath, "--outdir", workDir],
+                /* --untrusted disables every feature Tectonic considers insecure,
+                   shell-escape chief among them. Applied to ALL compiles, not just
+                   user-authored source: the template is ours but the content inside
+                   it is model-generated, and there is no compile in this product
+                   that needs an insecure feature. Verified against the existing
+                   template, which only uses \input{glyphtounicode} behind an
+                   \ifPDFTeX guard that Tectonic's XeTeX engine never enters. */
+                [texPath, "--untrusted", "--outdir", workDir],
                 { timeout: COMPILE_TIMEOUT_MS },
                 (error, stdout, stderr) => {
                     if (error) {
-                        reject(new Error(`Tectonic compile failed: ${stderr || error.message}`))
+                        // The raw log is attached rather than only interpolated, so
+                        // callers can report a located error instead of a wall of TeX.
+                        reject(Object.assign(
+                            new Error(`Tectonic compile failed: ${stderr || error.message}`),
+                            { latexLog: stderr || error.message }
+                        ))
                         return
                     }
                     resolve()
@@ -254,4 +267,116 @@ async function getOrCompileTailoredResumePdf(interviewId, texSource) {
     return inFlightPdfCompiles.get(interviewId)
 }
 
-module.exports = { generateTailoredResumeContent, renderResumeTemplate, compileLatexToPdf, getOrCompileTailoredResumePdf, isValidTailoredResume }
+/*
+ * Primitives that read, write or execute rather than typeset. LaTeX is a
+ * programming language: \input{/etc/passwd} pulls a server file into the output
+ * document, and \write18 runs a shell command. Tectonic's --untrusted closes the
+ * execution paths, and this closes the file-disclosure ones — two independent
+ * layers, because a single flag is one upstream default change away from being
+ * silently wrong.
+ *
+ * Only ever applied to LaTeX a USER wrote. The generated template legitimately
+ * contains \input{glyphtounicode}, so screening our own output would reject the
+ * one document we know is safe.
+ */
+/* (?![a-zA-Z]) rather than \b. A TeX control word ends at the first non-letter,
+   so \openin1=/etc/passwd IS the \openin primitive — but \b finds no boundary
+   between "openin" and "1" and lets it straight through. That was not
+   hypothetical: the guard's own test caught exactly that string escaping. */
+const FORBIDDEN_LATEX = [
+    { pattern: /\\write18/, what: "\\write18 (shell execution)" },
+    { pattern: /\\input(?![a-zA-Z])/, what: "\\input (reads a file into the document)" },
+    { pattern: /\\include(?![a-zA-Z])/, what: "\\include (reads a file into the document)" },
+    { pattern: /\\openin(?![a-zA-Z])/, what: "\\openin (opens a file for reading)" },
+    { pattern: /\\openout(?![a-zA-Z])/, what: "\\openout (opens a file for writing)" },
+    { pattern: /\\read(?![a-zA-Z])/, what: "\\read (reads from a stream)" },
+    { pattern: /\\catcode/, what: "\\catcode (can redefine syntax to smuggle the above past this check)" },
+    { pattern: /\\ShellEscape/, what: "\\ShellEscape (shell execution)" },
+    { pattern: /\\immediate\s*\\write/, what: "\\immediate\\write (writes to a file)" },
+]
+
+/**
+ * Turns Tectonic's log into something a person can act on: which line, and why.
+ *
+ * Raw TeX logs are dozens of lines of banner, font loading and package chatter
+ * around one real error, and are unreadable to someone who did not choose to
+ * learn LaTeX. TeX reports the failing line as "l.47 <the source text>", which is
+ * the one durable handle worth extracting.
+ *
+ * Returns { line, message, raw } — line is null when TeX did not say, in which
+ * case the caller still has the message and the raw log to fall back on.
+ */
+function parseLatexError(stderr) {
+    const raw = String(stderr ?? "")
+
+    // "! Undefined control sequence." — TeX's own error lines start with "! ".
+    const bang = raw.split("\n").find((line) => line.trim().startsWith("!"))
+    // "l.47 \foo{" — the line number TeX was reading when it gave up.
+    const at = raw.match(/^l\.(\d+)(.*)$/m)
+
+    const message = (bang || raw.split("\n").find((l) => /^error:/i.test(l.trim())) || "The document did not compile.")
+        .replace(/^!\s*/, "")
+        .replace(/^error:\s*/i, "")
+        .trim()
+
+    return {
+        line: at ? Number(at[1]) : null,
+        message,
+        raw: raw.slice(-4000), // tail only: the useful part of a TeX log is the end
+    }
+}
+
+/**
+ * Throws when user-authored LaTeX contains a primitive that does something other
+ * than typeset. Returns nothing on success.
+ */
+/* The one \input this product legitimately contains. Our own template loads
+   glyphtounicode (a stock TeX distribution file, behind an \ifPDFTeX guard that
+   Tectonic's XeTeX engine never enters), so a user who edits their generated
+   resume submits source that already has it. Without this exemption the guard
+   rejects every unmodified document and the editor is unusable from the first
+   click — which is exactly what happened before this was added.
+
+   Exempted as an exact literal, never as a relaxed \input rule: \input{anything
+   else} stays refused. */
+const ALLOWED_LATEX = [/\\input\{glyphtounicode\}/g]
+
+function assertSafeLatex(texSource) {
+    let probe = String(texSource ?? "")
+    for (const allowed of ALLOWED_LATEX) probe = probe.replace(allowed, "")
+
+    const found = FORBIDDEN_LATEX.filter(({ pattern }) => pattern.test(probe))
+
+    if (found.length > 0) {
+        throw Object.assign(
+            new Error(`This LaTeX uses commands that are not allowed here: ${found.map((f) => f.what).join("; ")}`),
+            { status: 400 }
+        )
+    }
+}
+
+/**
+ * The compiled PDF's text layer — the exact stream an ATS receives, in the order
+ * it receives it. Read with the same parser already used on uploaded resumes, so
+ * this is a genuine parser's-eye view rather than an approximation of one.
+ *
+ * pdf-parse appends its own "-- 1 of 2 --" page marker to the text. That is the
+ * parser's furniture, not resume content: left in, it shows up as a phantom line
+ * to the user and as noise to any keyword matching downstream.
+ */
+async function extractResumeText(pdfBuffer) {
+    const parser = new PDFParse({ data: Uint8Array.from(pdfBuffer) })
+    try {
+        const { text } = await parser.getText()
+        return text
+            .replace(/^\s*--\s*\d+\s+of\s+\d+\s*--\s*$/gm, "")
+            .replace(/\n{3,}/g, "\n\n")
+            .trim()
+    } finally {
+        // frees memory, recommended by pdf-parse docs — in a finally so a
+        // malformed PDF can't leak the parser's buffers on the throw path
+        await parser.destroy()
+    }
+}
+
+module.exports = { generateTailoredResumeContent, renderResumeTemplate, compileLatexToPdf, getOrCompileTailoredResumePdf, isValidTailoredResume, extractResumeText, assertSafeLatex, parseLatexError }

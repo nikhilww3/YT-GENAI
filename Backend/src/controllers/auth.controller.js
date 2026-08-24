@@ -1,6 +1,7 @@
 const userModel = require("../models/user.model")
 const bcrypt = require("bcryptjs")
 const jwt = require("jsonwebtoken")
+const { checkPasswordStrength } = require("../services/passwordStrength.service")
 const tokenBlacklistModel = require("../models/blacklist.model")
 
 /**
@@ -16,6 +17,21 @@ async function registerUserController(req, res){
     if(!username || !email || !password){
         return res.status(400).json({
             message: "please provide a username, email, and password"
+        })
+    }
+
+    /* validate password strength */
+    if(password.length < 10) {
+        return res.status(400).json({
+            message: "Password must be at least 10 characters long"
+        })
+    }
+
+    const passwordStrength = checkPasswordStrength(password, [username, email])
+    if(passwordStrength.score < 3) {
+        const feedback = passwordStrength.feedback?.suggestions?.[0] || "Password is too weak"
+        return res.status(400).json({
+            message: `Password is too weak: ${feedback}`
         })
     }
 
@@ -98,7 +114,7 @@ async function loginUserController(req, res){
         user: {
             id : user._id,
             username : user.username,
-            email: user.email
+            email: user.email,
         }
     })
 }
@@ -149,9 +165,62 @@ async function getMeController(req, res){
         user: {
             id : user._id,
             username: user.username,
-            email: user.email
+            email: user.email,
         }
     })
+}
+
+/**
+ * @name checkUsernameController
+ * @description check if username is available and return suggestions if taken
+ * @access public
+ */
+async function checkUsernameController(req, res) {
+    try {
+        const { username } = req.query
+
+        if (!username || username.trim().length === 0) {
+            return res.status(400).json({
+                message: "Username is required"
+            })
+        }
+
+        const normalizedUsername = username.trim()
+
+        /* Use case-insensitive direct match instead of regex */
+        const existingUser = await userModel.findOne({
+            username: normalizedUsername
+        }).collation({ locale: 'en', strength: 2 })
+
+        if (!existingUser) {
+            return res.status(200).json({
+                available: true,
+                suggestions: []
+            })
+        }
+
+        /* Generate suggestions by appending numbers */
+        const suggestions = []
+        for (let i = 1; i <= 5; i++) {
+            const suggestion = `${normalizedUsername}${i}`
+            const suggestionExists = await userModel.findOne({
+                username: suggestion
+            }).collation({ locale: 'en', strength: 2 })
+            if (!suggestionExists) {
+                suggestions.push(suggestion)
+            }
+        }
+
+        return res.status(200).json({
+            available: false,
+            suggestions
+        })
+    } catch (error) {
+        console.error('Error checking username:', error)
+        return res.status(500).json({
+            message: "Error checking username availability"
+        })
+    }
 }
 
 module.exports = {
@@ -159,4 +228,5 @@ module.exports = {
     loginUserController,
     logoutUserController,
     getMeController,
+    checkUsernameController,
 }

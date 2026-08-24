@@ -59,3 +59,14 @@ export async function getMe(){
 
     }
 }
+export async function checkUsername(username){
+
+    // Uses the shared `api` instance so this hits the same backend origin as
+    // every other auth call. It previously hardcoded its own URL and drifted
+    // to the wrong port, which made every username look taken.
+    const response = await api.get("/api/auth/check-username", {
+        params: { username }
+    })
+
+    return response.data
+}
